@@ -1,8 +1,9 @@
 public with sharing class VolunteerAllocationHandler {
 
-    public static Map<Id, String> assignVolunteers(Set<Id> eventIds) {
+    //public static Map<Id, String> assignVolunteers(Set<Id> eventIds) {
+    public static List<AssignVolunteersResponse> assignVolunteers(Set<Id> eventIds) {
 
-        Map<Id, String> results = new Map<Id, String>();
+        List<AssignVolunteersResponse> results = new List<AssignVolunteersResponse>();
         
         if (eventIds == null || eventIds.isEmpty()) {
             return results;
@@ -18,7 +19,11 @@ public with sharing class VolunteerAllocationHandler {
         
         for (Event__c eventRecord : events) {
             if (eventRecord.Required_Student_Count__c == null || eventRecord.Required_Student_Count__c <= 0) {
-                results.put(eventRecord.Id, eventRecord.Name + ' allocation ' + System.Label.Failed_Volunteer_Allocation_No_Required_Count);
+                results.add(new AssignVolunteersResponse(
+                    eventRecord.Id, 
+                    false,  
+                    eventRecord.Name + ' allocation ' + System.Label.Failed_Volunteer_Allocation_No_Required_Count)
+                );
                 continue;
             }
             categories.addAll(getEligibleCategories(eventRecord.Primary_Category__c));
@@ -53,6 +58,8 @@ public with sharing class VolunteerAllocationHandler {
             Set<String> eligibleCategories = getEligibleCategories(eventRecord.Primary_Category__c);
 
             List<VolunteerWorkload> candidates = new List<VolunteerWorkload>();
+            
+            Set<Id> candidateIds = new Set<Id>();
 
             for (Student__c student : students) {
                 if (!eligibleCategories.contains(student.Category__c)) {// student cat might not be populated for the students had no assigned tasks
@@ -72,7 +79,12 @@ public with sharing class VolunteerAllocationHandler {
                 candidates.add(workload);
             }
             if (candidates.size() < requiredCount) {
-                results.put(eventRecord.Id, eventRecord.Name + ' allocation ' + System.Label.Failed_Eligible_Volunteers_Are_Less);
+                //results.put(eventRecord.Id, eventRecord.Name + ' allocation ' + System.Label.Failed_Eligible_Volunteers_Are_Less);
+                results.add(new AssignVolunteersResponse(
+                    eventRecord.Id, 
+                    false,  
+                    eventRecord.Name + ' allocation ' + System.Label.Failed_Eligible_Volunteers_Are_Less)
+                );
                 continue;
             }
 			//rearranging based on the priority
@@ -80,6 +92,7 @@ public with sharing class VolunteerAllocationHandler {
 
             for (Integer i = 0; i < requiredCount; i++) {
                 VolunteerWorkload candidate = candidates[i];
+                candidateIds.add(candidate.studentId);
                 assignments.add(
                     new Assigned_Volunteer__c(
                         Event__c = eventRecord.Id,
@@ -87,6 +100,7 @@ public with sharing class VolunteerAllocationHandler {
                         Assigned_Date__c = Date.today()
                     )
                 );
+                
 				//current event has been assigned to students; 
 				//Now this event count must be updated So that upcoming priority get calculated based on it.
                 updateWorkload(
@@ -94,10 +108,13 @@ public with sharing class VolunteerAllocationHandler {
                     eventRecord.Work_Type__c
                 );
             }
-
-            results.put(
-                eventRecord.Id, eventRecord.Name + ' allocation ' + System.Label.Volunteers_Successfully_Allocated
-            );
+            
+			AssignVolunteersResponse succeesAssignment = new AssignVolunteersResponse(
+                    eventRecord.Id, 
+                    true,  
+                    eventRecord.Name + ' allocation ' + System.Label.Volunteers_Successfully_Allocated);
+            succeesAssignment.allocatedVolunteers = candidateIds;
+			results.add(succeesAssignment);
         }
 
         if (!assignments.isEmpty()) {
@@ -106,11 +123,12 @@ public with sharing class VolunteerAllocationHandler {
             } catch (DmlException ex) {
             
                 for (Event__c eventRecord : events) {
-                    if (results.get(eventRecord.Id).contains(System.Label.Volunteers_Successfully_Allocated)) {
-                        results.put(
-                            eventRecord.Id, eventRecord.Name + ' allocation ' + System.Label.Failed_DML + ' ' + ex.getMessage()
-                        );
-                    }
+                    //this will update the existing message
+                    results.add(new AssignVolunteersResponse(
+                        eventRecord.Id, 
+                        false,  
+                        eventRecord.Name + ' allocation ' + System.Label.Failed_DML + ' ' + ex.getMessage())
+                    ); 
                 }
             }
         }
@@ -151,8 +169,7 @@ public with sharing class VolunteerAllocationHandler {
         Map<Id, VolunteerWorkload> result = new Map<Id, VolunteerWorkload>();
 
         for (Id studentId : studentIds) {
-            result.put(studentId, new VolunteerWorkload(studentId)
-            );
+            result.put(studentId, new VolunteerWorkload(studentId));
         }
 
         for (AggregateResult ar : workloadResults) {
@@ -271,6 +288,20 @@ public with sharing class VolunteerAllocationHandler {
                 }
             }
             return null;
+        }
+    }
+    
+    public class AssignVolunteersResponse {
+        
+        Id eventId ;
+        Boolean isSuccess;
+        String statusMessage ;
+        Set<Id> allocatedVolunteers;
+        
+        public AssignVolunteersResponse(Id eventId, Boolean isSuccess, String statusMessage) {
+            this.eventId = eventId;
+            this.isSuccess = isSuccess;
+            this.statusMessage = statusMessage;
         }
     }
 }
