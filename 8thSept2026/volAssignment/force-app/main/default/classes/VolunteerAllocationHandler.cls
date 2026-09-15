@@ -1,6 +1,5 @@
 public with sharing class VolunteerAllocationHandler {
 
-    //public static Map<Id, String> assignVolunteers(Set<Id> eventIds) {
     public static List<AssignVolunteersResponse> assignVolunteers(Set<Id> eventIds) {
 
         List<AssignVolunteersResponse> results = new List<AssignVolunteersResponse>();
@@ -79,7 +78,6 @@ public with sharing class VolunteerAllocationHandler {
                 candidates.add(workload);
             }
             if (candidates.size() < requiredCount) {
-                //results.put(eventRecord.Id, eventRecord.Name + ' allocation ' + System.Label.Failed_Eligible_Volunteers_Are_Less);
                 results.add(new AssignVolunteersResponse(
                     eventRecord.Id, 
                     false,  
@@ -118,21 +116,24 @@ public with sharing class VolunteerAllocationHandler {
         }
 
         if (!assignments.isEmpty()) {
-            try {
-                insert assignments;
-            } catch (DmlException ex) {
-            
-                for (Event__c eventRecord : events) {
-                    //this will update the existing message
-                    results.add(new AssignVolunteersResponse(
-                        eventRecord.Id, 
-                        false,  
-                        eventRecord.Name + ' allocation ' + System.Label.Failed_DML + ' ' + ex.getMessage())
-                    ); 
+        
+            Database.SaveResult[] saveResults = Database.insert(assignments, false);
+        
+            for (Integer i = 0; i < saveResults.size(); i++) {       
+                if (!saveResults[i].isSuccess()) {
+                    Assigned_Volunteer__c failedAssignment = assignments[i];
+                    
+                    for (AssignVolunteersResponse response : results) {
+                        if (response.eventId == failedAssignment.Event__c) {
+                            response.isSuccess = false;
+                            response.statusMessage = System.Label.Failed_DML + ' ' + saveResults[i].getErrors()[0].getMessage();
+                            response.allocatedVolunteers = new Set<Id>();
+                            break;
+                        }
+                    }
                 }
             }
         }
-
         return results;
     }
 
@@ -261,10 +262,7 @@ public with sharing class VolunteerAllocationHandler {
             return 0;
         }
 
-        private Integer getCount(
-            VolunteerWorkload workload,
-            String workType
-        ) {
+        private Integer getCount(VolunteerWorkload workload, String workType) {
 
             if (workType == 'Class') {
                 return workload.classCount;
