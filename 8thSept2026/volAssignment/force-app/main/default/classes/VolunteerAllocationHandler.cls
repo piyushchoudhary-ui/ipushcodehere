@@ -262,7 +262,10 @@ public with sharing class VolunteerAllocationHandler {
             return 0;
         }
 
-        private Integer getCount(VolunteerWorkload workload, String workType) {
+        private Integer getCount(
+            VolunteerWorkload workload,
+            String workType
+        ) {
 
             if (workType == 'Class') {
                 return workload.classCount;
@@ -291,10 +294,10 @@ public with sharing class VolunteerAllocationHandler {
     
     public class AssignVolunteersResponse {
         
-        Id eventId ;
-        Boolean isSuccess;
-        String statusMessage ;
-        Set<Id> allocatedVolunteers;
+        public Id eventId ;
+        public Boolean isSuccess;
+        public String statusMessage ;
+        public Set<Id> allocatedVolunteers;
         
         public AssignVolunteersResponse(Id eventId, Boolean isSuccess, String statusMessage) {
             this.eventId = eventId;
