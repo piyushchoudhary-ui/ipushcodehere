@@ -1,4 +1,4 @@
-public with sharing class AssignedVolunteerSelector {
+public without sharing class AssignedVolunteerSelector {
 
     public static List<AggregateResult> getWorkloadByStudentIds(
         Set<Id> studentIds
