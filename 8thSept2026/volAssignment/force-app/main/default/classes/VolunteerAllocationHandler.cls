@@ -1,99 +1,102 @@
 public with sharing class VolunteerAllocationHandler {
 
-    public static Map<Id, String> assignVolunteers(Set<Id> eventIds) {
+    public static List<AssignVolunteersResponse> assignVolunteers(Set<Id> eventIds) {
 
-        Map<Id, String> results = new Map<Id, String>();
-
+        List<AssignVolunteersResponse> results = new List<AssignVolunteersResponse>();
+        
         if (eventIds == null || eventIds.isEmpty()) {
             return results;
         }
 
         List<Event__c> events = EventSelector.getEventsByIds(eventIds);
-
+        
         if (events.isEmpty()) {
+            results.add(new AssignVolunteersResponse(
+                null,
+                false,
+                System.Label.Invalid_EventId_EventIds 
+            ));
             return results;
         }
 
         Set<String> categories = new Set<String>();
-
+        
         for (Event__c eventRecord : events) {
-
-            if (eventRecord.Required_Student_Count__c == null ||
-                eventRecord.Required_Student_Count__c <= 0) {
-
-                results.put(eventRecord.Id, 'Failed');
+            if (eventRecord.Required_Student_Count__c == null || eventRecord.Required_Student_Count__c <= 0) {
+                results.add(new AssignVolunteersResponse(
+                    eventRecord.Id, 
+                    false,  
+                    eventRecord.Name + ' ' + System.Label.Failed_Volunteer_Allocation_No_Required_Count
+                ));
                 continue;
             }
-
-            categories.addAll(
-                getEligibleCategories(eventRecord.Primary_Category__c
-                )
-            );
+            categories.addAll(getEligibleCategories(eventRecord.Primary_Category__c));
         }
 
-        List<Student__c> students =
-            StudentSelector.getEligibleStudents(categories);
-
-        Set<Id> studentIds =
-            new Map<Id, Student__c>(students).keySet();
-
-        List<AggregateResult> workloadResults =
-            AssignedVolunteerSelector.getWorkloadByStudentIds(
+        List<Student__c> students = StudentSelector.getEligibleStudents(categories);
+        
+        if(students.isEmpty()) 
+            return results;
+        
+        Set<Id> studentIds = new Map<Id, Student__c>(students).keySet();
+        
+        List<AggregateResult> workloadResults = AssignedVolunteerSelector.getWorkloadByStudentIds(
                 studentIds
             );
-
-        Map<Id, VolunteerWorkload> workloadMap =
+		//here we have workload result for the students already having some tasks...
+        Map<Id, VolunteerWorkload> studentWorkloadMap =
             calculateWorkload(
                 studentIds,
                 workloadResults
             );
+		//workload map doesn't consist students with no tasks yet
+        Map<String, Integer> priorityMap = getWorkloadPriority(); //here we have custom setting deatails
 
-        Map<String, Integer> priorityMap =
-            getWorkloadPriority();
-
-        List<Assigned_Volunteer__c> assignments =
-            new List<Assigned_Volunteer__c>();
-
+        List<Assigned_Volunteer__c> assignments = new List<Assigned_Volunteer__c>();
+        
         for (Event__c eventRecord : events) {
-
             if (eventRecord.Required_Student_Count__c == null ||
                 eventRecord.Required_Student_Count__c <= 0) {
                 continue;
             }
 
-            Integer requiredCount =
-                Integer.valueOf(
-                    eventRecord.Required_Student_Count__c
-                );
+            Integer requiredCount = Integer.valueOf(eventRecord.Required_Student_Count__c);
 
-            Set<String> eligibleCategories =
-                getEligibleCategories(
-                    eventRecord.Primary_Category__c
-                );
+            Set<String> eligibleCategories = getEligibleCategories(eventRecord.Primary_Category__c);
 
-            List<VolunteerWorkload> candidates =
-                new List<VolunteerWorkload>();
+            List<VolunteerWorkload> candidates = new List<VolunteerWorkload>();
+            
+            Set<Id> candidateIds = new Set<Id>();
 
             for (Student__c student : students) {
-            VolunteerWorkload workload = workloadMap.get(student.Id);
-
-            if (workload == null)
-                workload = new VolunteerWorkload(student.Id); //For the student having no assigned event...
-            workload.studentName = student.Name; //includes no existing evnt assigned vols too
+                if (!eligibleCategories.contains(student.Category__c)) {// student cat might not be populated for the students had no assigned tasks
+                    continue;
+                }
+                VolunteerWorkload workload = studentWorkloadMap.get(student.Id);
+                workload = new VolunteerWorkload(student.Id);
+                studentWorkloadMap.put(
+                    student.Id,
+                    workload
+                );
+                
+                workload.studentName = student.Name;
                 workload.category = student.Category__c;
                 candidates.add(workload);
             }
-		System.debug('Hello candidates B ' + candidates);
-        candidates.sort(new VolunteerComparator(priorityMap));
-		System.debug('Hello candidates A ' + candidates);
-        
-        // Create Assgnmnt records
-        List<Assigned_Volunteer__c> assignments = new List<Assigned_Volunteer__c>();
+            if (candidates.size() < requiredCount) {
+                results.add(new AssignVolunteersResponse(
+                    eventRecord.Id, 
+                    false,  
+                    eventRecord.Name + System.Label.Failed_Eligible_Volunteers_Are_Less
+                ));
+                continue;
+            }
+			//rearranging based on the priority
+            candidates.sort(new VolunteerComparator(priorityMap));
 
             for (Integer i = 0; i < requiredCount; i++) {
-
-            VolunteerWorkload candidate = candidates[i];
-
+                VolunteerWorkload candidate = candidates[i];
+                candidateIds.add(candidate.studentId);
                 assignments.add(
                     new Assigned_Volunteer__c(
                         Event__c = eventRecord.Id,
@@ -101,95 +104,113 @@ public with sharing class VolunteerAllocationHandler {
                         Assigned_Date__c = Date.today()
                     )
                 );
+                
+				//current event has been assigned to students; 
+				//Now this event count must be updated So that upcoming priority get calculated based on it.
+                updateWorkload(
+                    candidate,
+                    eventRecord.Work_Type__c
+                );
+            }
+            
+			AssignVolunteersResponse succeesAssignment = new AssignVolunteersResponse(
+                eventRecord.Id, 
+                true,  
+                eventRecord.Name + ' ' + System.Label.Volunteers_Successfully_Allocated
+            );
+            succeesAssignment.allocatedVolunteers = candidateIds;
+			results.add(succeesAssignment);
         }
 
-        // insert 
-            try {
-                insert assignments;
-            //return 'Success';
-            } catch (DmlException ex) {
-            //return 'Failed';
+        Database.SaveResult[] saveResults = Database.insert(assignments, false);
+    
+        for (Integer i = 0; i < saveResults.size(); i++) {       
+            if (!saveResults[i].isSuccess()) {
+                Assigned_Volunteer__c failedAssignment = assignments[i];
+                
+                for (AssignVolunteersResponse response : results) {
+                    if (response.eventId == failedAssignment.Event__c) {
+                        response.isSuccess = false;
+                        response.statusMessage = System.Label.Failed_DML + ' ' + saveResults[i].getErrors()[0].getMessage();
+                        response.allocatedVolunteers = new Set<Id>();
+                        break;
                     }
-            return new Map<Id, String>();
+                }
+            }
+        }
+        
+        return results;
     }
 
     private static Map<String, Integer> getWorkloadPriority() {
 
         Map<String, Integer> priorityMap = new Map<String, Integer>();
+        List<Schema.PicklistEntry> workTypes = Event__c.Work_Type__c.getDescribe().getPicklistValues();
+        Set<Integer> weightSet = new Set<Integer>();
+        for(Schema.PicklistEntry workType : workTypes) 
+            priorityMap.put(workType.getValue(), 0);
+        for(Integer i = 1; i <= workTypes.size(); i++) 
+            weightSet.add(i);
+        //My map will already be having the needed keys, but if those priority 
         for (Workload_Defination__c def : Workload_Defination__c.getAll().values()) {
-            priorityMap.put(def.Name, Integer.valueOf(def.Weight__c));
-            //cls, brn/ clg, 123
+            if(priorityMap.containsKey(def.Name) && weightSet.contains(Integer.valueOf(def.Weight__c))) {
+                priorityMap.put(def.Name, Integer.valueOf(def.Weight__c));
+                weightSet.remove(Integer.valueOf(def.Weight__c));//preventing repeatation
+            }
         }
         return priorityMap;
     }
 
-    private static Set<String> getEligibleCategories(String primaryCategory) {
 
-        Set<String> categories =
-            new Set<String>{'Senior'};
+    private static Set<String> getEligibleCategories( String primaryCategory) {
+
+        Set<String> categories = new Set<String>{'Senior'};
 
         if (primaryCategory == 'Junior') {
-
             categories.add('Junior');
             categories.add('Sub-Junior');
-
         } else if (primaryCategory == 'Sub-Junior') {
-
             categories.add('Sub-Junior');
         }
 
         return categories;
     }
 
-    private static Map<Id, VolunteerWorkload> calculateWorkload(
-        Set<Id> studentIds,
-        List<AggregateResult> workloadResults
-    ) {
+    private static Map<Id, VolunteerWorkload> calculateWorkload(Set<Id> studentIds, List<AggregateResult> workloadResults) {
 
-        Map<Id, VolunteerWorkload> result =
-            new Map<Id, VolunteerWorkload>();
+        Map<Id, VolunteerWorkload> result = new Map<Id, VolunteerWorkload>();
 
         for (Id studentId : studentIds) {
-
-            result.put(
-                studentId,
-                new VolunteerWorkload(studentId)
-            );
+            result.put(studentId, new VolunteerWorkload(studentId));
         }
 
         for (AggregateResult ar : workloadResults) {
 
-            Id studentId =
-                (Id) ar.get('studentId');
-
-            String workType =
-                (String) ar.get('workType');
-
-            Integer count =
-                Integer.valueOf(ar.get('total'));
-
-            VolunteerWorkload workload =
-                result.get(studentId);
-
-            if (workload == null) {
-                continue;
-            }
+            Id studentId = (Id) ar.get('studentId');
+            String workType = (String) ar.get('workType');
+            Integer count = Integer.valueOf(ar.get('total'));
+            VolunteerWorkload workload = result.get(studentId);
 
             if (workType == 'Class') {
-
                 workload.classCount = count;
-
             } else if (workType == 'Branch') {
-
                 workload.branchCount = count;
-
             } else if (workType == 'Collage') {
-
                 workload.collageCount = count;
             }
         }
 
         return result;
+    }
+
+    private static void updateWorkload(VolunteerWorkload workload, String workType) {
+        if (workType == 'Class') {
+            workload.classCount++;
+        } else if (workType == 'Branch') {
+            workload.branchCount++;
+        } else if (workType == 'Collage') {
+            workload.collageCount++;
+        }
     }
 
     public class VolunteerWorkload {
@@ -206,29 +227,25 @@ public with sharing class VolunteerAllocationHandler {
         }
     }
 
-    public class VolunteerComparator
-        implements Comparator<VolunteerWorkload> {
+    public class VolunteerComparator implements Comparator<VolunteerWorkload> {
 
         private Map<String, Integer> priorityMap;
 
-        public VolunteerComparator(
-            Map<String, Integer> priorityMap
-        ) {
+        public VolunteerComparator(Map<String, Integer> priorityMap) {
             this.priorityMap = priorityMap;
         }
-
+        
         public Integer compare(VolunteerWorkload first, VolunteerWorkload second) {
-            /*
-            I   clg
-            II  brnch
-            III class
-            */
+
             String firstPriorityType = getWorkTypeByPriority(1);
+
             Integer result = compareWorkload(first, second, firstPriorityType);
+
             if (result != 0) 
                 return result;
 
             String secondPriorityType = getWorkTypeByPriority(2);
+
             result = compareWorkload(first, second, secondPriorityType);
             if (result != 0)
                 return result;
@@ -237,28 +254,31 @@ public with sharing class VolunteerAllocationHandler {
             result = compareWorkload(first, second, thirdPriorityType);
             if (result != 0) 
                     return result;
-                }
-            }
-
+            
             return 0;
         }
 
-
-        private Integer compareWorkload( VolunteerWorkload first, VolunteerWorkload second, String workType) {
+		private Integer compareWorkload(VolunteerWorkload first, VolunteerWorkload second, String workType) {
             Integer firstCount = getCount(first, workType);
-            Integer secondCount = getCount(second, workType);
 
+            Integer secondCount = getCount(second, workType);
+            
             if (firstCount < secondCount) {
                 return -1;
-            else if (firstCount > secondCount) 
+            }
+            if (firstCount > secondCount) {
                 return 1;
-			else
+            }
+            
             return 0;
         }
 
-		//sends number of event assigned of perticular wrktype
-        private Integer getCount(VolunteerWorkload workload, String workType) {
-            if (workType == 'Class')
+        private Integer getCount(
+            VolunteerWorkload workload,
+            String workType
+        ) {
+
+            if (workType == 'Class') {
                 return workload.classCount;
             }
 
@@ -273,18 +293,27 @@ public with sharing class VolunteerAllocationHandler {
             return 0;
         }
 
-        private String getWorkTypeByPriority(
-            Integer priority
-        ) {
-
+        private String getWorkTypeByPriority(Integer priority) {
             for (String workType : priorityMap.keySet()) {
-
                 if (priorityMap.get(workType) == priority) {
                     return workType;
                 }
             }
-
             return null;
+        }
+    }
+    
+    public class AssignVolunteersResponse {
+        
+        public Id eventId ;
+        public Boolean isSuccess;
+        public String statusMessage;
+        public Set<Id> allocatedVolunteers;
+        
+        public AssignVolunteersResponse(Id eventId, Boolean isSuccess, String statusMessage) {
+            this.eventId = eventId;
+            this.isSuccess = isSuccess;
+            this.statusMessage = statusMessage;
         }
     }
 }

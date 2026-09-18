@@ -1,9 +1,10 @@
-public with sharing class EventSelector {
+public without sharing class EventSelector {
 
     public static List<Event__c> getEventsByIds(Set<Id> eventIds) {
 
         return [
             SELECT Id,
+            	   Name, //adding name so that it can be include in the binded message
                    Work_Type__c,
                    Primary_Category__c,
                    Required_Student_Count__c,

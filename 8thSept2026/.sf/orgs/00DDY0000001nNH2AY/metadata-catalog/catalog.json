@@ -1,8 +1,8 @@
 {
   "version": 2,
   "orgId": "00DDY0000001nNH2AY",
-  "writtenAt": "2026-09-14T11:37:03.406Z",
-  "generation": 85,
+  "writtenAt": "2026-09-18T07:06:49.113Z",
+  "generation": 293,
   "inventory": [],
   "sobjects": {
     "descriptions": []
@@ -2239,5 +2239,18 @@
       "observedAt": "2026-09-14T05:35:33.786Z"
     }
   ],
-  "metadataListings": []
+  "metadataListings": [
+    {
+      "xmlName": "CustomLabels",
+      "observedAt": "2026-09-18T05:52:18.862Z",
+      "components": [
+        {
+          "fullName": "CustomLabels",
+          "fileName": "labels/CustomLabels.labels",
+          "lastModifiedByName": "User User",
+          "lastModifiedDate": "1970-01-01T00:00:00.000Z"
+        }
+      ]
+    }
+  ]
 }
