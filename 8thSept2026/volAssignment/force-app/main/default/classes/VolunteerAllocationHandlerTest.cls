@@ -38,7 +38,7 @@ private class VolunteerAllocationHandlerTest {
     }
 
     @IsTest
-    static void testNoEventsFound() {
+    static void testAssignVolunteerWithInvalidIdsReturnMessageInvalidEventIds() {
 
         Set<Id> ids = new Set<Id>{UserInfo.getUserId()};
 
@@ -46,11 +46,11 @@ private class VolunteerAllocationHandlerTest {
         List<VolunteerAllocationHandler.AssignVolunteersResponse> result = VolunteerAllocationHandler.assignVolunteers(ids);
         Test.stopTest();
 
-        System.assertEquals(0, result.size());
+        System.assertEquals(System.Label.Invalid_EventId_EventIds, result[0].statusMessage);
     }
 
     @IsTest
-    static void testZeroRequiredStudentCount() {
+    static void testAssignVolunteerWithZeroRequiredStudentCountReturnFailedVolunteerAllocationNoRequiredCount() {
 
         Event__c eventRecord = new Event__c(
             Name = 'Zero Count Event',
@@ -66,22 +66,20 @@ private class VolunteerAllocationHandlerTest {
                 new Set<Id>{ eventRecord.Id }
             );
         Test.stopTest();
+        Integer assignVolunteerCount =  [SELECT COUNT()
+                                            FROM Assigned_Volunteer__c
+                                            WHERE Event__c = :eventRecord.Id
+                                        ];
 
         System.assertEquals(1, result.size());
         System.assertEquals(false, result[0].isSuccess);
         System.assertEquals(eventRecord.Id, result[0].eventId);
-
-        System.assertEquals(
-            0,
-            [SELECT COUNT()
-                FROM Assigned_Volunteer__c
-                WHERE Event__c = :eventRecord.Id
-            ]
-        );
+        System.assertEquals(eventRecord.Name + ' ' +System.Label.Failed_Volunteer_Allocation_No_Required_Count, result[0].statusMessage);
+        System.assertEquals(0, assignVolunteerCount);
     }
 
     @IsTest
-    static void testJuniorCategoryAllocation() {
+    static void testAssignVolunteersJuniorCategoryAllocationReturnSuccessMessageAndAllocatedVolunteerIds() {
 
         Event__c eventRecord = new Event__c(
             Name = 'Junior Event',
@@ -98,21 +96,20 @@ private class VolunteerAllocationHandlerTest {
             );
         Test.stopTest();
 
+        Integer assignVolunteerCount =  [SELECT COUNT()
+                                            FROM Assigned_Volunteer__c
+                                            WHERE Event__c = :eventRecord.Id
+                                        ];
+
         System.assertEquals(1, result.size());
         System.assertEquals(true, result[0].isSuccess);
         System.assertEquals(2, result[0].allocatedVolunteers.size());
-
-        List<Assigned_Volunteer__c> assignments = [
-            SELECT Id, Event__c, Student__c
-            FROM Assigned_Volunteer__c
-            WHERE Event__c = :eventRecord.Id
-        ];
-
-        System.assertEquals(2, assignments.size());
+        System.assertEquals(eventRecord.Name + ' ' + System.Label.Volunteers_Successfully_Allocated, result[0].statusMessage);
+        System.assertEquals(2, assignVolunteerCount);
     }
 
     @IsTest
-    static void testSubJuniorCategoryAllocation() {
+    static void testAssignVolunteersSubJuniorCategoryAllocationReturnSuccessMessageAndAllocatedVolunteerIds() {
 
         Event__c eventRecord = new Event__c(
             Name = 'Sub Junior Event',
@@ -125,25 +122,23 @@ private class VolunteerAllocationHandlerTest {
 
         Test.startTest();
         List<VolunteerAllocationHandler.AssignVolunteersResponse> result = VolunteerAllocationHandler.assignVolunteers(
-                new Set<Id>{ eventRecord.Id }
-            );
+            new Set<Id>{ eventRecord.Id }
+        );
         Test.stopTest();
+
+        Integer assignVolunteerCount =  [SELECT COUNT()
+                                            FROM Assigned_Volunteer__c
+                                            WHERE Event__c = :eventRecord.Id
+                                        ];
 
         System.assertEquals(1, result.size());
         System.assertEquals(true, result[0].isSuccess);
         System.assertEquals(2, result[0].allocatedVolunteers.size());
-
-        System.assertEquals(
-            2,
-            [SELECT COUNT()
-                FROM Assigned_Volunteer__c
-                WHERE Event__c = :eventRecord.Id
-            ]
-        );
+        System.assertEquals(2, assignVolunteerCount);
     }
 
     @IsTest
-    static void testSeniorCategoryAllocation() {
+    static void testAssignVolunteersSeniorCategoryAllocationReturnSuccessMessageAndAllocatedVolunteerIds() {
 
         Event__c eventRecord = new Event__c(
             Name = 'Senior Event',
@@ -179,7 +174,7 @@ private class VolunteerAllocationHandlerTest {
     }
     
     @IsTest
-    static void testInsufficientVolunteers() {
+    static void testAssignVolunteersInsufficientVolunteerReturnFailedMessage() {
 
         Event__c eventRecord = new Event__c(
             Name = 'Insufficient Event',
@@ -192,19 +187,18 @@ private class VolunteerAllocationHandlerTest {
 
         Test.startTest();
         List<VolunteerAllocationHandler.AssignVolunteersResponse> result = VolunteerAllocationHandler.assignVolunteers(
-                new Set<Id>{ eventRecord.Id }
-            );
+            new Set<Id>{ eventRecord.Id }
+        );
         Test.stopTest();
+
+        Integer assignVolunteerCount =  [SELECT COUNT()
+                                            FROM Assigned_Volunteer__c
+                                            WHERE Event__c = :eventRecord.Id
+                                        ];
 
         System.assertEquals(1, result.size());
         System.assertEquals(false, result[0].isSuccess);
-        System.assertEquals(
-            0,
-            [SELECT COUNT()
-                FROM Assigned_Volunteer__c
-                WHERE Event__c = :eventRecord.Id
-            ]
-        );
+        System.assertEquals(0, assignVolunteerCount);
     }
 
     @IsTest
@@ -357,16 +351,15 @@ private class VolunteerAllocationHandlerTest {
         );
         Test.stopTest();
 
+        Integer assignmentCount = [SELECT COUNT()
+                                    FROM Assigned_Volunteer__c
+                                    WHERE Event__c IN :new Set<Id>{
+                                        event1.Id,
+                                        event2.Id
+                                    }
+                                ];   
+
         System.assertEquals(2, result.size());
-        System.assertEquals(
-            2,
-            [SELECT COUNT()
-                FROM Assigned_Volunteer__c
-                WHERE Event__c IN :new Set<Id>{
-                    event1.Id,
-                    event2.Id
-                }
-            ]
-        );
+        System.assertEquals(2, assignmentCount);
     }
 }

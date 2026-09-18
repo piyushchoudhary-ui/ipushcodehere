@@ -11,13 +11,12 @@ public with sharing class VolunteerAllocationHandler {
         List<Event__c> events = EventSelector.getEventsByIds(eventIds);
         
         if (events.isEmpty()) {
-            return results;
-            return results.add(new AssignVolunteersResponse(
+            results.add(new AssignVolunteersResponse(
                 null,
                 false,
-                null,
-                'System.Label.Invalid_EventId_EventIds' 
+                System.Label.Invalid_EventId_EventIds 
             ));
+            return results;
         }
 
         Set<String> categories = new Set<String>();
@@ -27,7 +26,7 @@ public with sharing class VolunteerAllocationHandler {
                 results.add(new AssignVolunteersResponse(
                     eventRecord.Id, 
                     false,  
-                    eventRecord.Name + System.Label.Failed_Volunteer_Allocation_No_Required_Count
+                    eventRecord.Name + ' ' + System.Label.Failed_Volunteer_Allocation_No_Required_Count
                 ));
                 continue;
             }
@@ -117,7 +116,7 @@ public with sharing class VolunteerAllocationHandler {
 			AssignVolunteersResponse succeesAssignment = new AssignVolunteersResponse(
                 eventRecord.Id, 
                 true,  
-                eventRecord.Name + System.Label.Volunteers_Successfully_Allocated
+                eventRecord.Name + ' ' + System.Label.Volunteers_Successfully_Allocated
             );
             succeesAssignment.allocatedVolunteers = candidateIds;
 			results.add(succeesAssignment);
@@ -308,7 +307,7 @@ public with sharing class VolunteerAllocationHandler {
         
         public Id eventId ;
         public Boolean isSuccess;
-        public String statusMessage ;
+        public String statusMessage;
         public Set<Id> allocatedVolunteers;
         
         public AssignVolunteersResponse(Id eventId, Boolean isSuccess, String statusMessage) {
