@@ -18,7 +18,7 @@ private class VolunteerAllocationHandlerTest {
     }
 
     @IsTest
-    static void testNullEventIds() {
+    static void testAssignVolunteersWithNullEventIdsRetunEmptyResult() {
 
         Test.startTest();
         List<VolunteerAllocationHandler.AssignVolunteersResponse> result = VolunteerAllocationHandler.assignVolunteers(null);
@@ -28,7 +28,7 @@ private class VolunteerAllocationHandlerTest {
     }
 
     @IsTest
-    static void testEmptyEventIds() {
+    static void testAssignVolunteerWithEmptyEventIdsReturnEmptyResult() {
 
         Test.startTest();
         List<VolunteerAllocationHandler.AssignVolunteersResponse> result = VolunteerAllocationHandler.assignVolunteers(new Set<Id>());

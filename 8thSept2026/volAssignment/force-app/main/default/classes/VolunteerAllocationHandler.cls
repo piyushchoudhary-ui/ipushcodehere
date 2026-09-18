@@ -12,6 +12,12 @@ public with sharing class VolunteerAllocationHandler {
         
         if (events.isEmpty()) {
             return results;
+            return results.add(new AssignVolunteersResponse(
+                null,
+                false,
+                null,
+                'System.Label.Invalid_EventId_EventIds' 
+            ));
         }
 
         Set<String> categories = new Set<String>();
@@ -21,14 +27,17 @@ public with sharing class VolunteerAllocationHandler {
                 results.add(new AssignVolunteersResponse(
                     eventRecord.Id, 
                     false,  
-                    eventRecord.Name + ' allocation ' + System.Label.Failed_Volunteer_Allocation_No_Required_Count)
-                );
+                    eventRecord.Name + System.Label.Failed_Volunteer_Allocation_No_Required_Count
+                ));
                 continue;
             }
             categories.addAll(getEligibleCategories(eventRecord.Primary_Category__c));
         }
 
         List<Student__c> students = StudentSelector.getEligibleStudents(categories);
+        
+        if(students.isEmpty()) 
+            return results;
         
         Set<Id> studentIds = new Map<Id, Student__c>(students).keySet();
         
@@ -65,14 +74,12 @@ public with sharing class VolunteerAllocationHandler {
                     continue;
                 }
                 VolunteerWorkload workload = studentWorkloadMap.get(student.Id);
-                if (workload == null) {
-                    workload = new VolunteerWorkload(student.Id);
-                    studentWorkloadMap.put(
-                        student.Id,
-                        workload
-                    );
-                }
-
+                workload = new VolunteerWorkload(student.Id);
+                studentWorkloadMap.put(
+                    student.Id,
+                    workload
+                );
+                
                 workload.studentName = student.Name;
                 workload.category = student.Category__c;
                 candidates.add(workload);
@@ -81,8 +88,8 @@ public with sharing class VolunteerAllocationHandler {
                 results.add(new AssignVolunteersResponse(
                     eventRecord.Id, 
                     false,  
-                    eventRecord.Name + ' allocation ' + System.Label.Failed_Eligible_Volunteers_Are_Less)
-                );
+                    eventRecord.Name + System.Label.Failed_Eligible_Volunteers_Are_Less
+                ));
                 continue;
             }
 			//rearranging based on the priority
@@ -108,48 +115,53 @@ public with sharing class VolunteerAllocationHandler {
             }
             
 			AssignVolunteersResponse succeesAssignment = new AssignVolunteersResponse(
-                    eventRecord.Id, 
-                    true,  
-                    eventRecord.Name + ' allocation ' + System.Label.Volunteers_Successfully_Allocated);
+                eventRecord.Id, 
+                true,  
+                eventRecord.Name + System.Label.Volunteers_Successfully_Allocated
+            );
             succeesAssignment.allocatedVolunteers = candidateIds;
 			results.add(succeesAssignment);
         }
 
-        if (!assignments.isEmpty()) {
-        
-            Database.SaveResult[] saveResults = Database.insert(assignments, false);
-        
-            for (Integer i = 0; i < saveResults.size(); i++) {       
-                if (!saveResults[i].isSuccess()) {
-                    Assigned_Volunteer__c failedAssignment = assignments[i];
-                    
-                    for (AssignVolunteersResponse response : results) {
-                        if (response.eventId == failedAssignment.Event__c) {
-                            response.isSuccess = false;
-                            response.statusMessage = System.Label.Failed_DML + ' ' + saveResults[i].getErrors()[0].getMessage();
-                            response.allocatedVolunteers = new Set<Id>();
-                            break;
-                        }
+        Database.SaveResult[] saveResults = Database.insert(assignments, false);
+    
+        for (Integer i = 0; i < saveResults.size(); i++) {       
+            if (!saveResults[i].isSuccess()) {
+                Assigned_Volunteer__c failedAssignment = assignments[i];
+                
+                for (AssignVolunteersResponse response : results) {
+                    if (response.eventId == failedAssignment.Event__c) {
+                        response.isSuccess = false;
+                        response.statusMessage = System.Label.Failed_DML + ' ' + saveResults[i].getErrors()[0].getMessage();
+                        response.allocatedVolunteers = new Set<Id>();
+                        break;
                     }
                 }
             }
         }
+        
         return results;
     }
 
     private static Map<String, Integer> getWorkloadPriority() {
 
         Map<String, Integer> priorityMap = new Map<String, Integer>();
-
+        List<Schema.PicklistEntry> workTypes = Event__c.Work_Type__c.getDescribe().getPicklistValues();
+        Set<Integer> weightSet = new Set<Integer>();
+        for(Schema.PicklistEntry workType : workTypes) 
+            priorityMap.put(workType.getValue(), 0);
+        for(Integer i = 1; i <= workTypes.size(); i++) 
+            weightSet.add(i);
+        //My map will already be having the needed keys, but if those priority 
         for (Workload_Defination__c def : Workload_Defination__c.getAll().values()) {
-            priorityMap.put(
-                def.Name, //collage
-                Integer.valueOf(def.Weight__c) //1
-            );
+            if(priorityMap.containsKey(def.Name) && weightSet.contains(Integer.valueOf(def.Weight__c))) {
+                priorityMap.put(def.Name, Integer.valueOf(def.Weight__c));
+                weightSet.remove(Integer.valueOf(def.Weight__c));//preventing repeatation
+            }
         }
-
         return priorityMap;
     }
+
 
     private static Set<String> getEligibleCategories( String primaryCategory) {
 

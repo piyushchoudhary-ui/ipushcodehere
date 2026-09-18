@@ -12,20 +12,27 @@
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>Failed Eligible Volunteers Are Less</shortDescription>
-        <value>Failed: Volunteer Allocation Number Of Eligible Volunteers Are Less</value>
+        <value>allocation Failed: Volunteer Allocation Number Of Eligible Volunteers Are Less</value>
     </labels>
     <labels>
         <fullName>Failed_Volunteer_Allocation_No_Required_Count</fullName>
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>Failed Volunteer Allocation No Required Count</shortDescription>
-        <value>FAILED: Event has No required counts for volunteers</value>
+        <value>allocation FAILED: Event has No required counts for volunteers</value>
     </labels>
     <labels>
         <fullName>Volunteers_Successfully_Allocated</fullName>
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>Volunteers Successfully Allocated</shortDescription>
-        <value>Success: Volunteers are successfully allocated</value>
+        <value>allocation Success: Volunteers are successfully allocated</value>
+    </labels>
+    <labels>
+        <fullName>Invalid_EventId_EventIds</fullName>
+        <language>en_US</language>
+        <protected>true</protected>
+        <shortDescription>Invalid Event Id/Ids</shortDescription>
+        <value>allocation Failed: Invalid Event Id/Ids</value>
     </labels>
 </CustomLabels>
