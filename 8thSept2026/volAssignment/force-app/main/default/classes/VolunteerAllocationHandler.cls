@@ -1,6 +1,7 @@
 public with sharing class VolunteerAllocationHandler {
 
-    public static List<AssignVolunteersResponse> assignVolunteers(Set<Id> eventIds) {
+    @AuraEnabled
+    public static List<AssignVolunteersResponse> assignVolunteers(List<Id> eventIds) {
 
         List<AssignVolunteersResponse> results = new List<AssignVolunteersResponse>();
         
@@ -66,19 +67,21 @@ public with sharing class VolunteerAllocationHandler {
 
             List<VolunteerWorkload> candidates = new List<VolunteerWorkload>();
             
-            Set<Id> candidateIds = new Set<Id>();
+            List<VolunteerWorkload> allocatedCandidates = new List<VolunteerWorkload>();
 
             for (Student__c student : students) {
                 if (!eligibleCategories.contains(student.Category__c)) {// student cat might not be populated for the students had no assigned tasks
                     continue;
                 }
                 VolunteerWorkload workload = studentWorkloadMap.get(student.Id);
-                workload = new VolunteerWorkload(student.Id);
-                studentWorkloadMap.put(
-                    student.Id,
-                    workload
-                );
                 
+                if (workload == null) {
+                    workload = new VolunteerWorkload(student.Id);
+                    studentWorkloadMap.put(
+                        student.Id, 
+                        workload
+                    );
+                }
                 workload.studentName = student.Name;
                 workload.category = student.Category__c;
                 candidates.add(workload);
@@ -96,7 +99,7 @@ public with sharing class VolunteerAllocationHandler {
 
             for (Integer i = 0; i < requiredCount; i++) {
                 VolunteerWorkload candidate = candidates[i];
-                candidateIds.add(candidate.studentId);
+                allocatedCandidates.add(candidate);
                 assignments.add(
                     new Assigned_Volunteer__c(
                         Event__c = eventRecord.Id,
@@ -105,8 +108,6 @@ public with sharing class VolunteerAllocationHandler {
                     )
                 );
                 
-				//current event has been assigned to students; 
-				//Now this event count must be updated So that upcoming priority get calculated based on it.
                 updateWorkload(
                     candidate,
                     eventRecord.Work_Type__c
@@ -118,7 +119,8 @@ public with sharing class VolunteerAllocationHandler {
                 true,  
                 eventRecord.Name + ' ' + System.Label.Volunteers_Successfully_Allocated
             );
-            succeesAssignment.allocatedVolunteers = candidateIds;
+            // succeesAssignment.allocatedVolunteers = candidateIds;
+            succeesAssignment.allocatedVolunteers = allocatedCandidates;
 			results.add(succeesAssignment);
         }
 
@@ -132,7 +134,7 @@ public with sharing class VolunteerAllocationHandler {
                     if (response.eventId == failedAssignment.Event__c) {
                         response.isSuccess = false;
                         response.statusMessage = System.Label.Failed_DML + ' ' + saveResults[i].getErrors()[0].getMessage();
-                        response.allocatedVolunteers = new Set<Id>();
+                        response.allocatedVolunteers = new List<VolunteerWorkload>();
                         break;
                     }
                 }
@@ -308,7 +310,7 @@ public with sharing class VolunteerAllocationHandler {
         public Id eventId ;
         public Boolean isSuccess;
         public String statusMessage;
-        public Set<Id> allocatedVolunteers;
+        public List<VolunteerWorkload> allocatedVolunteers;
         
         public AssignVolunteersResponse(Id eventId, Boolean isSuccess, String statusMessage) {
             this.eventId = eventId;
