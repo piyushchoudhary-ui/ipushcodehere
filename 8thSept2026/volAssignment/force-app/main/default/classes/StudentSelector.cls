@@ -1,12 +1,6 @@
-public with sharing class StudentSelector {
+public without sharing class StudentSelector {
 
-    public static List<Student__c> getEligibleStudents(
-        Set<String> categories
-    ) {
-
-        if (categories == null || categories.isEmpty()) {
-            return new List<Student__c>();
-        }
+    public static List<Student__c> getEligibleStudents( Set<String> categories) {
 
         return [
             SELECT Id,
@@ -17,5 +11,6 @@ public with sharing class StudentSelector {
             AND Volunteer__c = true
             AND Category__c IN :categories
         ];
+        //Assuming total number of Students are lesser then 50k
     }
 }
