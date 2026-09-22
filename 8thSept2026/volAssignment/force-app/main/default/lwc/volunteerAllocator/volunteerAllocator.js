@@ -8,13 +8,13 @@ const actions = [
 const columns = [
     { label: 'Volunteer Name', fieldName: 'studentName' },
     { label: 'Category', fieldName: 'category' },
+    { label: 'Event Count Volunteer Assigned To', fieldName: 'totalCount' },
     { type: 'action', typeAttributes: { rowActions: actions }},
 ];
 
 export default class VolunteerAllocator extends LightningElement {
     @api recordId;
     columns = columns;
-    // Acolumns = ["Volunteer Name", "Category", "Event Count Volunteer Assigned To", "Action"];
     assignVolunteerDetails;
     isSuccess;
     statusMessage;
@@ -30,7 +30,10 @@ export default class VolunteerAllocator extends LightningElement {
         }).then( response => {
             const resp = response[0];
             if(resp.isSuccess) {
-                this.allocatedVolunteers = resp.allocatedVolunteers;
+                this.allocatedVolunteers = resp.allocatedVolunteers.map(item => ({
+                    ...item,
+                    totalCount: item.classCount + item.branchCount + item.collageCount
+                }));
             }
         }).catch(error => {
             console.error('Error from Apex:', error);
