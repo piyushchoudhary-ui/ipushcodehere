@@ -1,20 +1,54 @@
 import { LightningElement, api } from 'lwc';
-import apexMethodName from "@salesforce/apex/VolunteerAllocationHandler.assignVolunteers";
+import assignVolunteers from "@salesforce/apex/VolunteerAllocationHandler.assignVolunteers";
+import deleteAssignVolunteer from "@salesforce/apex/VolunteerAllocationHandler.deleteAssignVolunteer";
+
+const actions = [
+    { label: 'Delete', name: 'delete' }
+];
+const columns = [
+    { label: 'Volunteer Name', fieldName: 'studentName' },
+    { label: 'Category', fieldName: 'category' },
+    { type: 'action', typeAttributes: { rowActions: actions }},
+];
 
 export default class VolunteerAllocator extends LightningElement {
     @api recordId;
+    columns = columns;
+    // Acolumns = ["Volunteer Name", "Category", "Event Count Volunteer Assigned To", "Action"];
+    assignVolunteerDetails;
+    isSuccess;
+    statusMessage;
+    allocatedVolunteers;
 
     connectedCallback() {
         console.log('Hello from ConnectedCallback');
     }
     
     handleAssignVolunteers() {
-        apexMethodName({ 
-            eventIds: [this.recordId] 
+        assignVolunteers({
+            eventIds: [this.recordId]
         }).then( response => {
-            console.log('Response from Apex:', response);
+            const resp = response[0];
+            if(resp.isSuccess) {
+                this.allocatedVolunteers = resp.allocatedVolunteers;
+            }
         }).catch(error => {
             console.error('Error from Apex:', error);
+            console.error('Error from Apex:', error.body.message);
         });
     }
+
+    deleteVolunteer(event) {
+        const { studentId } = event.detail.row;
+        deleteAssignVolunteer({
+            eventIds: [this.recordId],
+            studentIds: [studentId] 
+        }).then( response => {
+            if(response === 'SUCCESS') {
+                const updatedList = this.allocatedVolunteers.filter(item => item.studentId !== studentId);
+                this.allocatedVolunteers = updatedList;
+            }
+        })
+    }
+
 }

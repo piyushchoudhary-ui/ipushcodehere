@@ -144,6 +144,16 @@ public with sharing class VolunteerAllocationHandler {
         return results;
     }
 
+    @AuraEnabled
+    public static string deleteAssignVolunteer(List<Id> eventIds, List<Id> studentIds) {
+        List<Assigned_Volunteer__c> assigneesToDelete = AssignedVolunteerSelector.deleteAssignedVolunteer(eventIds, studentIds);
+        if(!assigneesToDelete.isEmpty()) {
+            delete assigneesToDelete;            
+            return 'SUCCESS';
+        }
+        return 'FAILED';
+    }
+
     private static Map<String, Integer> getWorkloadPriority() {
 
         Map<String, Integer> priorityMap = new Map<String, Integer>();
@@ -216,18 +226,24 @@ public with sharing class VolunteerAllocationHandler {
     }
 
     public class VolunteerWorkload {
-
+        @AuraEnabled
         public Id studentId;
+        @AuraEnabled
         public String studentName;
+        @AuraEnabled
         public String category;
+        @AuraEnabled
         public Integer classCount = 0;
+        @AuraEnabled
         public Integer branchCount = 0;
+        @AuraEnabled
         public Integer collageCount = 0;
 
         public VolunteerWorkload(Id studentId) {
             this.studentId = studentId;
         }
     }
+
 
     public class VolunteerComparator implements Comparator<VolunteerWorkload> {
 
@@ -306,10 +322,13 @@ public with sharing class VolunteerAllocationHandler {
     }
     
     public class AssignVolunteersResponse {
-        
+        @AuraEnabled
         public Id eventId ;
+        @AuraEnabled
         public Boolean isSuccess;
+        @AuraEnabled
         public String statusMessage;
+        @AuraEnabled
         public List<VolunteerWorkload> allocatedVolunteers;
         
         public AssignVolunteersResponse(Id eventId, Boolean isSuccess, String statusMessage) {

@@ -7,5 +7,15 @@
                 <lightning-button variant="brand" class="slds-m-left_x-small" label="Assign Volunteers" title="Primary action" onclick={handleAssignVolunteers} ></lightning-button>
             </span>
         </div>
+    </div>
+    <template lwc:if={allocatedVolunteers}>
+        <div style="height: 300px;">
+            <lightning-datatable
+                    key-field="studentId"
+                    data={allocatedVolunteers}
+                    columns={columns}
+                    onrowaction={deleteVolunteer}>
+            </lightning-datatable>
         </div>
+    </template>
 </template>

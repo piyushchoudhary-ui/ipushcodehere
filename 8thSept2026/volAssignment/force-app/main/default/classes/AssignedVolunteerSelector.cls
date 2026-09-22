@@ -17,4 +17,14 @@ public without sharing class AssignedVolunteerSelector {
             GROUP BY Student__c, Event__r.Work_Type__c
         ];
     }
+
+    public static List<Assigned_Volunteer__c> deleteAssignedVolunteer(
+        List<Id> eventIds, List<Id> studentIds
+    ) {
+        return [
+            SELECT Id FROM Assigned_Volunteer__c 
+                        WHERE Student__c IN :studentIds
+                        AND Event__c IN :eventIds
+        ];
+    }
 }
