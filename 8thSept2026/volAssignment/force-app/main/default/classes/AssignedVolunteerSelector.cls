@@ -3,11 +3,6 @@ public without sharing class AssignedVolunteerSelector {
     public static List<AggregateResult> getWorkloadByStudentIds(
         Set<Id> studentIds
     ) {
-
-        if (studentIds == null || studentIds.isEmpty()) {
-            return new List<AggregateResult>();
-        }
-
         return [
             SELECT Student__c studentId,
                    Event__r.Work_Type__c workType,
@@ -31,10 +26,6 @@ public without sharing class AssignedVolunteerSelector {
     public static List<Assigned_Volunteer__c> getAssignedVolunteersByEventIds(
         List<Id> eventIds
     ) {
-        if (eventIds == null || eventIds.isEmpty()) {
-            return new List<Assigned_Volunteer__c>();
-        }
-    
         return [
             SELECT Id,
                    Event__c,
