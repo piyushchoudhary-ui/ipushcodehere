@@ -1,6 +1,7 @@
 import { LightningElement, api } from 'lwc';
 import assignVolunteers from "@salesforce/apex/VolunteerAllocationHandler.assignVolunteers";
 import deleteAssignVolunteer from "@salesforce/apex/VolunteerAllocationHandler.deleteAssignVolunteer";
+import getAllocatedVolunteers from "@salesforce/apex/VolunteerAllocationHandler.getAllocatedVolunteers";
 
 const actions = [
     { label: 'Delete', name: 'delete' }
@@ -20,24 +21,28 @@ export default class VolunteerAllocator extends LightningElement {
     statusMessage;
     allocatedVolunteers;
 
+    get hasAllocatedVolunteers() {
+        return this.allocatedVolunteers.length > 0;
+    }
+
     connectedCallback() {
-        console.log('Hello from ConnectedCallback');
+        this.loadAllocatedVolunteers();
     }
     
     handleAssignVolunteers() {
         assignVolunteers({
             eventIds: [this.recordId]
-        }).then( response => {
+        }).then(response => {
             const resp = response[0];
-            if(resp.isSuccess) {
-                this.allocatedVolunteers = resp.allocatedVolunteers.map(item => ({
-                    ...item,
-                    totalCount: item.classCount + item.branchCount + item.collageCount
-                }));
+            this.statusMessage = resp.statusMessage;
+            this.showModal = true;
+            if (resp.isSuccess && resp.allocatedVolunteers) {
+                this.loadAllocatedVolunteers();
             }
         }).catch(error => {
             console.error('Error from Apex:', error);
-            console.error('Error from Apex:', error.body.message);
+            this.statusMessage = error?.body?.message || 'An unexpected error occurred.';
+            this.showModal = true;
         });
     }
 
@@ -54,4 +59,21 @@ export default class VolunteerAllocator extends LightningElement {
         })
     }
 
+    loadAllocatedVolunteers() {
+        getAllocatedVolunteers({
+            eventId: this.recordId
+        }).then(response => {
+            this.allocatedVolunteers = response.map(item => ({
+                ...item,
+                totalCount: item.classCount + item.branchCount + item.collageCount
+            }));
+        }).catch(error => {
+            console.error('Error loading volunteers:', error);
+            this.allocatedVolunteers = [];
+        });
+    }
+
+    handleModalClose() {
+        this.showModal = false;
+    }
 }

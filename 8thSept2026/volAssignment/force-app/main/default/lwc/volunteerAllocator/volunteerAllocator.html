@@ -8,13 +8,13 @@
             </span>
         </div>
     </div>
-    <template lwc:if={allocatedVolunteers}>
+    <template lwc:if={hasAllocatedVolunteers}>
         <div style="height: 300px;">
             <lightning-datatable
-                    key-field="studentId"
-                    data={allocatedVolunteers}
-                    columns={columns}
-                    onrowaction={deleteVolunteer}>
+                key-field="studentId"
+                data={allocatedVolunteers}
+                columns={columns}
+                onrowaction={deleteVolunteer}>
             </lightning-datatable>
         </div>
     </template>

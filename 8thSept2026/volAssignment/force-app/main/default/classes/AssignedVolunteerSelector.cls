@@ -27,4 +27,22 @@ public without sharing class AssignedVolunteerSelector {
                         AND Event__c IN :eventIds
         ];
     }
+    
+    public static List<Assigned_Volunteer__c> getAssignedVolunteersByEventIds(
+        List<Id> eventIds
+    ) {
+        if (eventIds == null || eventIds.isEmpty()) {
+            return new List<Assigned_Volunteer__c>();
+        }
+    
+        return [
+            SELECT Id,
+                   Event__c,
+                   Student__c,
+                   Student__r.Name,
+                   Student__r.Category__c
+            FROM Assigned_Volunteer__c
+            WHERE Event__c IN :eventIds
+        ];
+    }
 }
