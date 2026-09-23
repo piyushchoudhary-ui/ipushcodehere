@@ -22,6 +22,13 @@
         <value>allocation FAILED: Event has No required counts for volunteers</value>
     </labels>
     <labels>
+        <fullName>Invalid_EventId_EventIds</fullName>
+        <language>en_US</language>
+        <protected>true</protected>
+        <shortDescription>Invalid Event Id/Ids</shortDescription>
+        <value>allocation Failed: Invalid Event Id/Ids</value>
+    </labels>
+    <labels>
         <fullName>Volunteers_Successfully_Allocated</fullName>
         <language>en_US</language>
         <protected>true</protected>
@@ -29,10 +36,38 @@
         <value>allocation Success: Volunteers are successfully allocated</value>
     </labels>
     <labels>
-        <fullName>Invalid_EventId_EventIds</fullName>
+        <fullName>Already_Assigned_Required_Resources</fullName>
         <language>en_US</language>
         <protected>true</protected>
-        <shortDescription>Invalid Event Id/Ids</shortDescription>
-        <value>allocation Failed: Invalid Event Id/Ids</value>
+        <shortDescription>Number Of Resource already assigned</shortDescription>
+        <value>Already assigned required resources</value>
+    </labels>
+    <labels>
+        <fullName>No_Eligible_Students_Available</fullName>
+        <language>en_US</language>
+        <protected>true</protected>
+        <shortDescription>No students passing the eligibility creteria</shortDescription>
+        <value>No Eligible Students Available</value>
+    </labels>
+    <labels>
+        <fullName>Volunteers_Are_Already_Assigned</fullName>
+        <language>en_US</language>
+        <protected>true</protected>
+        <shortDescription>Volunteers are already assigned</shortDescription>
+        <value>Volunteers are already assigned</value>
+    </labels>
+    <labels>
+        <fullName>New_Volunteers_Are_Now_Assigned</fullName>
+        <language>en_US</language>
+        <protected>true</protected>
+        <shortDescription>New Volunteers Are Now Assigned</shortDescription>
+        <value>New Volunteers Are Now Assigned</value>
+    </labels>
+    <labels>
+        <fullName>No_Volunteers_Are_Allocated_Now</fullName>
+        <language>en_US</language>
+        <protected>true</protected>
+        <shortDescription>No Volunteers Are Allocated Now</shortDescription>
+        <value>No Volunteers Are Allocated Now</value>
     </labels>
 </CustomLabels>

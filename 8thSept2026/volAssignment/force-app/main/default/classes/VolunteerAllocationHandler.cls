@@ -37,9 +37,9 @@ public with sharing class VolunteerAllocationHandler {
     
             assignedStudentsByEvent.get(assignment.Event__c).add(assignment.Student__c);
         }
-    
+
         Set<String> categories = new Set<String>();
-            
+                
         for (Event__c eventRecord : events) {
             if (eventRecord.Required_Student_Count__c == null || eventRecord.Required_Student_Count__c <= 0) {
                 results.add(new AssignVolunteersResponse(
@@ -49,13 +49,32 @@ public with sharing class VolunteerAllocationHandler {
                 ));
                 continue;
             }
+    
+            Integer alreadyAssigned = existingCountByEvent.containsKey(eventRecord.Id)?
+                                        existingCountByEvent.get(eventRecord.Id): 0;
+            Integer requiredCount = Integer.valueOf(eventRecord.Required_Student_Count__c);
+    
+            if (alreadyAssigned >= requiredCount) {
+                results.add(new AssignVolunteersResponse(
+                    eventRecord.Id,
+                    false,
+                    System.Label.Already_Assigned_Required_Resources 
+                ));
+                continue;
+            }
             categories.addAll(getEligibleCategories(eventRecord.Primary_Category__c));
         }
     
         List<Student__c> students = StudentSelector.getEligibleStudents(categories);
             
-        if(students.isEmpty()) 
+        if(students.isEmpty()) {
+            results.add(new AssignVolunteersResponse(
+                null,
+                false,
+                System.Label.No_Eligible_Students_Available 
+            ));
             return results;
+        }
             
         Set<Id> studentIds = new Map<Id, Student__c>(students).keySet();
             
@@ -80,6 +99,15 @@ public with sharing class VolunteerAllocationHandler {
             }
     
             Integer requiredCount = Integer.valueOf(eventRecord.Required_Student_Count__c);
+    
+            Integer alreadyAssigned = existingCountByEvent.containsKey(eventRecord.Id)? 
+                                        existingCountByEvent.get(eventRecord.Id): 0;
+    
+            Integer remainingCount = requiredCount - alreadyAssigned;
+    
+            if (remainingCount <= 0) {
+                continue;
+            }
     
             Set<String> eligibleCategories = getEligibleCategories(eventRecord.Primary_Category__c);
     
@@ -110,18 +138,18 @@ public with sharing class VolunteerAllocationHandler {
                 workload.category = student.Category__c;
                 candidates.add(workload);
             }
-            if (candidates.size() < requiredCount) {
+            if (candidates.size() < remainingCount) {
                 results.add(new AssignVolunteersResponse(
                     eventRecord.Id, 
                     false,  
-                    eventRecord.Name + System.Label.Failed_Eligible_Volunteers_Are_Less
+                    eventRecord.Name + ' ' + System.Label.Failed_Eligible_Volunteers_Are_Less
                 ));
                 continue;
             }
             //rearranging based on the priority
             candidates.sort(new VolunteerComparator(priorityMap));
     
-            for (Integer i = 0; i < requiredCount; i++) {
+            for (Integer i = 0; i < remainingCount; i++) {
                 VolunteerWorkload candidate = candidates[i];
                 allocatedCandidates.add(candidate);
                 assignments.add(
@@ -138,14 +166,24 @@ public with sharing class VolunteerAllocationHandler {
                 );
             }
     
-			AssignVolunteersResponse succeesAssignment = new AssignVolunteersResponse(
+            String successMessage;
+    
+            if (alreadyAssigned > 0) {
+                successMessage = alreadyAssigned + ' ' +
+                    System.Label.Volunteers_Are_Already_Assigned + ' ' + remainingCount + ' ' +
+                    System.Label.New_Volunteers_Are_Now_Assigned;
+            } else {
+                successMessage = remainingCount + ' ' + System.Label.New_Volunteers_Are_Now_Assigned;
+            }
+                
+            AssignVolunteersResponse successAssignment = new AssignVolunteersResponse(
                     eventRecord.Id, 
                     true,  
-                eventRecord.Name + ' ' + System.Label.Volunteers_Successfully_Allocated
+                    successMessage
                 );
-            // succeesAssignment.allocatedVolunteers = candidateIds;
-            succeesAssignment.allocatedVolunteers = allocatedCandidates;
-			results.add(succeesAssignment);
+    
+            successAssignment.allocatedVolunteers = allocatedCandidates;
+            results.add(successAssignment);
         }
     
         Database.SaveResult[] saveResults = Database.insert(assignments, false);
@@ -188,7 +226,7 @@ public with sharing class VolunteerAllocationHandler {
         List<Assigned_Volunteer__c> assignments = AssignedVolunteerSelector.getAssignedVolunteersByEventIds(
                 new List<Id>{ eventId }
             );
-    
+        
         if (assignments.isEmpty()) {
             return new List<VolunteerWorkload>();
         }
@@ -205,7 +243,7 @@ public with sharing class VolunteerAllocationHandler {
         List<AggregateResult> workloadResults = AssignedVolunteerSelector.getWorkloadByStudentIds(studentIds);
     
         Map<Id, VolunteerWorkload> workloadMap = calculateWorkload(studentIds, workloadResults);
-    
+
         List<VolunteerWorkload> result = new List<VolunteerWorkload>();
     
         for (Id studentId : studentIds) {

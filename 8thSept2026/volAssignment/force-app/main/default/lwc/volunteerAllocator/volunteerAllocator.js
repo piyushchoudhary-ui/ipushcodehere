@@ -2,6 +2,7 @@ import { LightningElement, api } from 'lwc';
 import assignVolunteers from "@salesforce/apex/VolunteerAllocationHandler.assignVolunteers";
 import deleteAssignVolunteer from "@salesforce/apex/VolunteerAllocationHandler.deleteAssignVolunteer";
 import getAllocatedVolunteers from "@salesforce/apex/VolunteerAllocationHandler.getAllocatedVolunteers";
+import noVolunteersAllocated from "@salesforce/label/c.No_Volunteers_Are_Allocated_Now";
 
 const actions = [
     { label: 'Delete', name: 'delete' }
@@ -20,13 +21,18 @@ export default class VolunteerAllocator extends LightningElement {
     isSuccess;
     statusMessage;
     allocatedVolunteers;
+    showModal = false;
+
+    label = {
+        noVolunteersAllocated
+    };
 
     get hasAllocatedVolunteers() {
-        return this.allocatedVolunteers.length > 0;
+        return this.allocatedVolunteers?.length > 0;
     }
 
     connectedCallback() {
-        this.loadAllocatedVolunteers();
+        this.loadAllocatedVolunteers(); //will populate at initial load
     }
     
     handleAssignVolunteers() {
@@ -37,7 +43,7 @@ export default class VolunteerAllocator extends LightningElement {
             this.statusMessage = resp.statusMessage;
             this.showModal = true;
             if (resp.isSuccess && resp.allocatedVolunteers) {
-                this.loadAllocatedVolunteers();
+                this.loadAllocatedVolunteers(); //will populate after remaining volunteer assigned.
             }
         }).catch(error => {
             console.error('Error from Apex:', error);
