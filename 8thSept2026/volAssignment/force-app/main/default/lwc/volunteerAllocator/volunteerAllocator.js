@@ -1,7 +1,9 @@
 import { LightningElement, api } from 'lwc';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import assignVolunteers from "@salesforce/apex/VolunteerAllocationHandler.assignVolunteers";
 import deleteAssignVolunteer from "@salesforce/apex/VolunteerAllocationHandler.deleteAssignVolunteer";
 import getAllocatedVolunteers from "@salesforce/apex/VolunteerAllocationHandler.getAllocatedVolunteers";
+import generalInfoToAssign from "@salesforce/label/c.General_Info_To_Assign";
 import noVolunteersAllocated from "@salesforce/label/c.No_Volunteers_Are_Allocated_Now";
 
 const actions = [
@@ -22,33 +24,53 @@ export default class VolunteerAllocator extends LightningElement {
     statusMessage;
     allocatedVolunteers;
     showModal = false;
+    permissionMessage = null;
 
     label = {
-        noVolunteersAllocated
+        noVolunteersAllocated,
+        generalInfoToAssign
     };
 
     get hasAllocatedVolunteers() {
         return this.allocatedVolunteers?.length > 0;
     }
 
+    get hasPermissionMessage() {
+        return this.permissoinMessage != null;
+    }
+
+    get hasNoPermissionMessage() {
+        return this.permissoinMessage == null;
+    }
+
     connectedCallback() {
-        this.loadAllocatedVolunteers(); //will populate at initial load
+        this.loadAllocatedVolunteers(); 
     }
     
     handleAssignVolunteers() {
+        //checkPermissions
+        this.showModal = true;
+    }
+
+    handleAssign() {
         assignVolunteers({
             eventIds: [this.recordId]
         }).then(response => {
             const resp = response[0];
+            console.log('hello from resp :', resp);
             this.statusMessage = resp.statusMessage;
-            this.showModal = true;
             if (resp.isSuccess && resp.allocatedVolunteers) {
                 this.loadAllocatedVolunteers(); //will populate after remaining volunteer assigned.
+                this.showToast('Successful Allocation', this.statusMessage, 'success');
+            } else {
+                this.showToast('Failed Allocation', this.statusMessage, 'error');
             }
+            this.showModal = false;
         }).catch(error => {
             console.error('Error from Apex:', error);
             this.statusMessage = error?.body?.message || 'An unexpected error occurred.';
-            this.showModal = true;
+            this.showModal = false;
+            this.showToast('Failed Allocation', this.statusMessage, 'error');
         });
     }
 
@@ -77,6 +99,16 @@ export default class VolunteerAllocator extends LightningElement {
             console.error('Error loading volunteers:', error);
             this.allocatedVolunteers = [];
         });
+    }
+
+    showToast(title, message, variant) {
+        const evt = new ShowToastEvent({
+            title: title,
+            message: message,
+            variant: variant,
+            mode: 'dismissable'
+        });
+        this.dispatchEvent(evt);
     }
 
     handleModalClose() {
