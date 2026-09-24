@@ -374,8 +374,14 @@ public with sharing class VolunteerAllocationHandler {
             String thirdPriorityType = getWorkTypeByPriority(3);
             result = compareWorkload(first, second, thirdPriorityType);
             if (result != 0) 
-                    return result;
-            
+                return result;
+
+            // Fourth priority: alphabetical student name
+            if (first.studentName != second.studentName) 
+                return first.studentName.compareTo(
+                    second.studentName
+                );
+  
             return 0;
         }
 
