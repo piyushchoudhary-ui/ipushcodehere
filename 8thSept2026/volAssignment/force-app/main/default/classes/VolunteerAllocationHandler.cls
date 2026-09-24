@@ -256,6 +256,15 @@ public with sharing class VolunteerAllocationHandler {
     
         return result;
     }
+
+    @AuraEnabled
+    public static Map<String, Boolean> checkPermissions() {
+        Map<String, Boolean> permissions = new Map<String, Boolean>();
+        permissions.put('isHavingAssigningPermission', Schema.sObjectType.Assigned_Volunteer__c.isCreateable());
+        permissions.put('isHavingStudentNamePermission', Schema.sObjectType.Student__c.fields.Name.isAccessible());
+        permissions.put('isHavingStudentCategoryPermission', Schema.sObjectType.Student__c.fields.Category__c.isAccessible());        
+        return permissions;
+    }
     
     private static Map<String, Integer> getWorkloadPriority() {
 
@@ -381,7 +390,7 @@ public with sharing class VolunteerAllocationHandler {
                 return first.studentName.compareTo(
                     second.studentName
                 );
-  
+            
             return 0;
         }
 

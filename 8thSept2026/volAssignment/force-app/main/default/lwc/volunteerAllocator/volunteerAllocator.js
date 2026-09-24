@@ -3,6 +3,7 @@ import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import assignVolunteers from "@salesforce/apex/VolunteerAllocationHandler.assignVolunteers";
 import deleteAssignVolunteer from "@salesforce/apex/VolunteerAllocationHandler.deleteAssignVolunteer";
 import getAllocatedVolunteers from "@salesforce/apex/VolunteerAllocationHandler.getAllocatedVolunteers";
+import checkPermissions from "@salesforce/apex/VolunteerAllocationHandler.checkPermissions";
 import generalInfoToAssign from "@salesforce/label/c.General_Info_To_Assign";
 import noVolunteersAllocated from "@salesforce/label/c.No_Volunteers_Are_Allocated_Now";
 
@@ -48,8 +49,27 @@ export default class VolunteerAllocator extends LightningElement {
     }
     
     handleAssignVolunteers() {
-        //checkPermissions
-        this.showModal = true;
+        checkPermissions(
+        ).then(response => {
+            const permissionLabels = {
+                isHavingAssigningPermission: 'You do not have permission to assign Volunteers',
+                isHavingStudentNamePermission: 'You do not have permission to access Student Name',
+                isHavingStudentCategoryPermission: 'You do not have permission to access Student Category'
+            };
+            let deniedMessages = [];
+            for (let key in permissionLabels) {
+                console.log('key ' + response[key]);
+                if(!response[key]) {
+                    deniedMessages.push(permissionLabels[key]);
+                }
+                console.log(deniedMessages);
+            }
+            this.permissionMessage = deniedMessages.join(" & ");
+            this.showModal = true;
+        }).catch(error => {
+            console.error('error :' + error);
+            this.showModal = true;
+        })
     }
 
     handleAssign() {
