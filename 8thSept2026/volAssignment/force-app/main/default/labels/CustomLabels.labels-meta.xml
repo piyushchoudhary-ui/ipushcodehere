@@ -12,14 +12,14 @@
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>Failed Eligible Volunteers Are Less</shortDescription>
-        <value>allocation Failed: Volunteer Allocation Number Of Eligible Volunteers Are Less</value>
+        <value>Allocation Failed: Volunteer Allocation Number Of Eligible Volunteers Are Less</value>
     </labels>
     <labels>
         <fullName>Failed_Volunteer_Allocation_No_Required_Count</fullName>
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>Failed Volunteer Allocation No Required Count</shortDescription>
-        <value>allocation FAILED: Event has No required counts for volunteers</value>
+        <value>Allocation FAILED: Event has No required counts for volunteers</value>
     </labels>
     <labels>
         <fullName>Invalid_EventId_EventIds</fullName>
@@ -33,7 +33,7 @@
         <language>en_US</language>
         <protected>true</protected>
         <shortDescription>Volunteers Successfully Allocated</shortDescription>
-        <value>allocation Success: Volunteers are successfully allocated</value>
+        <value>Allocation Success: Volunteers are successfully allocated</value>
     </labels>
     <labels>
         <fullName>Already_Assigned_Required_Resources</fullName>
@@ -69,5 +69,33 @@
         <protected>true</protected>
         <shortDescription>No Volunteers Are Allocated Now</shortDescription>
         <value>No Volunteers Are Allocated Now</value>
+    </labels>
+    <labels>
+        <fullName>General_Info_To_Assign</fullName>
+        <language>en_US</language>
+        <protected>true</protected>
+        <shortDescription>Push the Assign Button and get the volunteers assigned to the event.</shortDescription>
+        <value>Push the Assign Button and get the volunteers assigned to the event.</value>
+    </labels>
+    <labels>
+        <fullName>No_Permission_To_Access_Student_Name</fullName>
+        <language>en_US</language>
+        <protected>true</protected>
+        <shortDescription>You do not have permission to access Student Name</shortDescription>
+        <value>You do not have permission to access Student Name</value>
+    </labels>
+    <labels>
+        <fullName>No_Permission_To_Access_Student_Category</fullName>
+        <language>en_US</language>
+        <protected>true</protected>
+        <shortDescription>You do not have permission to access Student Category</shortDescription>
+        <value>You do not have permission to access Student Category</value>
+    </labels>
+    <labels>
+        <fullName>No_Permission_To_Assign_Volunteer</fullName>
+        <language>en_US</language>
+        <protected>true</protected>
+        <shortDescription>You do not have permission to assign Volunteers</shortDescription>
+        <value>You do not have permission to assign Volunteers</value>
     </labels>
 </CustomLabels>

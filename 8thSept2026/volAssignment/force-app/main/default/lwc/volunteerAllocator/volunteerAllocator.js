@@ -6,6 +6,9 @@ import getAllocatedVolunteers from "@salesforce/apex/VolunteerAllocationHandler.
 import checkPermissions from "@salesforce/apex/VolunteerAllocationHandler.checkPermissions";
 import generalInfoToAssign from "@salesforce/label/c.General_Info_To_Assign";
 import noVolunteersAllocated from "@salesforce/label/c.No_Volunteers_Are_Allocated_Now";
+import noPermissionToAssignVolunteer from "@salesforce/label/c.No_Permission_To_Assign_Volunteer";
+import noPermissionToAccessStudentName from "@salesforce/label/c.No_Permission_To_Access_Student_Name";
+import noPermissionToAccessStudentCategory from "@salesforce/label/c.No_Permission_To_Access_Student_Category";
 
 const actions = [
     { label: 'Delete', name: 'delete' }
@@ -26,10 +29,17 @@ export default class VolunteerAllocator extends LightningElement {
     allocatedVolunteers;
     showModal = false;
     permissionMessage = null;
+    initialAccessMessage = null;
 
     label = {
         noVolunteersAllocated,
         generalInfoToAssign
+    };
+
+    permissionLabels = {
+        isHavingAssigningPermission: noPermissionToAssignVolunteer,
+        isHavingStudentNamePermission: noPermissionToAccessStudentName,
+        isHavingStudentCategoryPermission: noPermissionToAccessStudentCategory
     };
 
     get hasAllocatedVolunteers() {
@@ -37,30 +47,45 @@ export default class VolunteerAllocator extends LightningElement {
     }
 
     get hasPermissionMessage() {
-        return this.permissoinMessage != null;
+        return this.permissionMessage != null;
     }
 
     get hasNoPermissionMessage() {
-        return this.permissoinMessage == null;
+        return this.permissionMessage == '';
     }
 
     connectedCallback() {
-        this.loadAllocatedVolunteers(); 
+        this.checkInitialPermissions();
+    }
+
+    checkInitialPermissions() {
+        checkPermissions(
+        ).then(response => {
+            let deniedMessages = [];
+            let permissionKeys = ['isHavingStudentNamePermission', 'isHavingStudentCategoryPermission'];
+            for (let key of permissionKeys) {
+                if (!response[key]) {
+                    deniedMessages.push(this.permissionLabels[key]);
+                }
+            }
+            this.initialAccessMessage = deniedMessages.join(' & ');
+            if (!this.initialAccessMessage) {
+                this.loadAllocatedVolunteers();
+            }
+        })
+        .catch(error => {
+            console.error('error :' + error);
+        });
     }
     
     handleAssignVolunteers() {
         checkPermissions(
         ).then(response => {
-            const permissionLabels = {
-                isHavingAssigningPermission: 'You do not have permission to assign Volunteers',
-                isHavingStudentNamePermission: 'You do not have permission to access Student Name',
-                isHavingStudentCategoryPermission: 'You do not have permission to access Student Category'
-            };
             let deniedMessages = [];
-            for (let key in permissionLabels) {
+            for (let key in this.permissionLabels) {
                 console.log('key ' + response[key]);
                 if(!response[key]) {
-                    deniedMessages.push(permissionLabels[key]);
+                    deniedMessages.push(this.permissionLabels[key]);
                 }
                 console.log(deniedMessages);
             }
@@ -68,7 +93,6 @@ export default class VolunteerAllocator extends LightningElement {
             this.showModal = true;
         }).catch(error => {
             console.error('error :' + error);
-            this.showModal = true;
         })
     }
 

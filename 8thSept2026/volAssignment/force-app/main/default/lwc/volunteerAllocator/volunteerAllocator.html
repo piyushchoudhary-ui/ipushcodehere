@@ -11,22 +11,32 @@
             </span>
         </div>
     </div>
-    <template lwc:if={hasAllocatedVolunteers}>
-        <div style="height: 300px;">
-            <lightning-datatable
-                key-field="studentId"
-                data={allocatedVolunteers}
-                columns={columns}
-                onrowaction={deleteVolunteer}
-                hide-checkbox-column>
-            </lightning-datatable>
+    <template lwc:if={initialAccessMessage}>
+        <div class="slds-align_absolute-center slds-m-around_medium">
+            <p class="slds-text-color_error">
+                {initialAccessMessage}
+            </p>
         </div>
     </template>
-    <!-- No volunteer existing -->
     <template lwc:else>
-        <div class="slds-align_absolute-center slds-m-around_medium">
-            <p class="slds-text-color_error">{label.noVolunteersAllocated}</p>
-        </div>
+        <template lwc:if={hasAllocatedVolunteers}>
+            <div style="height: 300px;">
+                <lightning-datatable
+                    key-field="studentId"
+                    data={allocatedVolunteers}
+                    columns={columns}
+                    onrowaction={deleteVolunteer}
+                    hide-checkbox-column>
+                </lightning-datatable>
+            </div>
+        </template>
+        <template lwc:else>
+            <div class="slds-align_absolute-center slds-m-around_medium">
+                <p class="slds-text-color_error">
+                    {label.noVolunteersAllocated}
+                </p>
+            </div>
+        </template>
     </template>
     <!-- modal  -->
     <template lwc:if={showModal}>
@@ -48,7 +58,7 @@
                     </div>
                 </template>
                 <template lwc:else>
-                    <div class="slds-modal__content slds-p-around_medium">
+                    <div class="slds-text-color_weak slds-modal__content slds-p-around_medium">
                         <p>{label.generalInfoToAssign}</p>
                     </div>
                 </template>
