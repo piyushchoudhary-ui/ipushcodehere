@@ -1,0 +1,85 @@
+<template>
+    <div class="slds-grid slds-gutters slds-m-bottom_medium">
+        <div class="slds-text-heading_medium slds-m-left_medium"><span>Event Volunteers</span></div>
+        <div class="slds-col"><span> </span></div>
+        <div class="slds-col"><span> </span></div>
+        <div class="slds-col"><span> </span></div>
+        <div class="slds-col"><span> </span></div>
+        <div class="slds-col">
+            <span>
+                <lightning-button variant="brand" class="slds-m-left_medium" label="Assign Volunteers" title="Primary action" onclick={handleAssignVolunteers} ></lightning-button>
+            </span>
+        </div>
+    </div>
+    <template lwc:if={initialAccessMessage}>
+        <div class="slds-align_absolute-center slds-m-around_medium">
+            <p class="slds-text-color_error">
+                {initialAccessMessage}
+            </p>
+        </div>
+    </template>
+    <template lwc:else>
+        <template lwc:if={hasAllocatedVolunteers}>
+            <div style="height: 300px;">
+                <lightning-datatable
+                    key-field="studentId"
+                    data={allocatedVolunteers}
+                    columns={columns}
+                    onrowaction={deleteVolunteer}
+                    hide-checkbox-column>
+                </lightning-datatable>
+            </div>
+        </template>
+        <template lwc:else>
+            <div class="slds-align_absolute-center slds-m-around_medium">
+                <p class="slds-text-color_error">
+                    {label.noVolunteersAllocated}
+                </p>
+            </div>
+        </template>
+    </template>
+    <!-- modal  -->
+    <template lwc:if={showModal}>
+        <section
+            role="dialog"
+            tabindex="-1"
+            aria-modal="true"
+            aria-labelledby="modal-heading"
+            class="slds-modal slds-fade-in-open">
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <h2 id="modal-heading" class="slds-text-heading_medium">
+                        Volunteer Allocation
+                    </h2>
+                </header>
+                <template lwc:if={permissionMessage}>
+                    <div class="slds-modal__content slds-p-around_medium">
+                        <p class="slds-text-color_error">{permissionMessage}</p>
+                    </div>
+                </template>
+                <template lwc:else>
+                    <div class="slds-text-color_weak slds-modal__content slds-p-around_medium">
+                        <p>{label.generalInfoToAssign}</p>
+                    </div>
+                </template>
+                <footer class="slds-modal__footer">
+                    <lightning-button
+                        class="slds-m-horizontal_x-small"
+                        variant="neutral"
+                        label="Cancel"
+                        onclick={handleModalClose}>
+                    </lightning-button>
+                    <template lwc:if={hasNoPermissionMessage}>
+                        <lightning-button
+                            class="slds-m-horizontal_x-small"
+                            variant="brand"
+                            label="Assign"
+                            onclick={handleAssign}>
+                        </lightning-button>
+                    </template>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+</template>
