@@ -1,6 +1,6 @@
 public without sharing class EventSelector {
 
-    public static List<Event__c> getEventsByIds(Set<Id> eventIds) {
+    public static List<Event__c> getEventsByIds(List<Id> eventIds) {
 
         return [
             SELECT Id,
