@@ -52,7 +52,7 @@ public with sharing class VolunteerAllocationService {
             Integer alreadyAssigned = existingCountByEvent.containsKey(eventRecord.Id)?
                                         existingCountByEvent.get(eventRecord.Id): 0;
             Integer requiredCount = Integer.valueOf(eventRecord.Required_Student_Count__c);
-    
+
             if (alreadyAssigned >= requiredCount) {
                 results.add(new AssignVolunteersResponse(
                     eventRecord.Id,
@@ -197,8 +197,20 @@ public with sharing class VolunteerAllocationService {
         return results;
     }
 
-    public static string deleteAssignVolunteer(List<Id> eventIds, List<Id> studentIds) {
-        List<Assigned_Volunteer__c> assigneesToDelete = AssignedVolunteerSelector.deleteAssignedVolunteer(eventIds, studentIds);
+    public static String deleteAssignVolunteer(List<Id> eventIds, List<Id> studentIds) {
+        Set<String> targetPairs = new Set<String>();
+        for(Integer i = 0; i < eventIds.size(); i++) {
+            targetPairs.add(eventIds[i] + '-' + studentIds[i]);
+        }
+        List<Assigned_Volunteer__c> potentialMatches = AssignedVolunteerSelector.deleteAssignedVolunteer(eventIds, studentIds);
+        List<Assigned_Volunteer__c> assigneesToDelete = new List<Assigned_Volunteer__c>();
+        for(Assigned_Volunteer__c assignedVolunteer : potentialMatches) {
+            String currentPair = assignedVolunteer.Event__c + '-' + assignedVolunteer.Student__c;
+            if(targetPairs.contains(currentPair)) {
+                assigneesToDelete.add(assignedVolunteer);
+            }
+        }
+        System.debug(assigneesToDelete);
         if(!assigneesToDelete.isEmpty()) {
             delete assigneesToDelete;            
             return 'SUCCESS';

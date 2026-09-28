@@ -17,7 +17,7 @@ public without sharing class AssignedVolunteerSelector {
         List<Id> eventIds, List<Id> studentIds
     ) {
         return [
-            SELECT Id FROM Assigned_Volunteer__c 
+            SELECT Id, Student__c, Event__c FROM Assigned_Volunteer__c 
                         WHERE Student__c IN :studentIds
                         AND Event__c IN :eventIds
         ];

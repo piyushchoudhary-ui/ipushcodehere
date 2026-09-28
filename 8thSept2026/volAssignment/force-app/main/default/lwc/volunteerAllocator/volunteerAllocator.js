@@ -1,14 +1,16 @@
-import { LightningElement, api } from 'lwc';
+import { LightningElement, api, wire } from 'lwc';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
-import assignVolunteers from "@salesforce/apex/VolunteerAllocationHandler.assignVolunteers";
-import deleteAssignVolunteer from "@salesforce/apex/VolunteerAllocationHandler.deleteAssignVolunteer";
-import getAllocatedVolunteers from "@salesforce/apex/VolunteerAllocationHandler.getAllocatedVolunteers";
-import checkPermissions from "@salesforce/apex/VolunteerAllocationHandler.checkPermissions";
+import { refreshApex } from '@salesforce/apex';
+//Arranged alphabetically
+import assignVolunteers from "@salesforce/apex/VolunteerAllocationController.assignVolunteers";
+import checkPermissions from "@salesforce/apex/VolunteerAllocationController.checkPermissions";
+import deleteAssignVolunteer from "@salesforce/apex/VolunteerAllocationController.deleteAssignVolunteer";
+import getAllocatedVolunteers from "@salesforce/apex/VolunteerAllocationController.getAllocatedVolunteers";
 import generalInfoToAssign from "@salesforce/label/c.General_Info_To_Assign";
-import noVolunteersAllocated from "@salesforce/label/c.No_Volunteers_Are_Allocated_Now";
-import noPermissionToAssignVolunteer from "@salesforce/label/c.No_Permission_To_Assign_Volunteer";
-import noPermissionToAccessStudentName from "@salesforce/label/c.No_Permission_To_Access_Student_Name";
 import noPermissionToAccessStudentCategory from "@salesforce/label/c.No_Permission_To_Access_Student_Category";
+import noPermissionToAccessStudentName from "@salesforce/label/c.No_Permission_To_Access_Student_Name";
+import noPermissionToAssignVolunteer from "@salesforce/label/c.No_Permission_To_Assign_Volunteer";
+import noVolunteersAllocated from "@salesforce/label/c.No_Volunteers_Are_Allocated_Now";
 
 const actions = [
     { label: 'Delete', name: 'delete' }
@@ -21,15 +23,17 @@ const columns = [
 ];
 
 export default class VolunteerAllocator extends LightningElement {
-    @api recordId;
-    columns = columns;
+    //arranged alphabetically
     assignVolunteerDetails;
-    isSuccess;
-    statusMessage;
     allocatedVolunteers;
-    showModal = false;
-    permissionMessage = null;
+    columns = columns;
+    @api recordId;
     initialAccessMessage = null;
+    isSuccess;
+    permissionMessage = null;
+    showModal = false;
+    statusMessage;
+    wiredAllocatedVolunteersResult;
 
     label = {
         noVolunteersAllocated,
@@ -58,6 +62,22 @@ export default class VolunteerAllocator extends LightningElement {
         this.checkInitialPermissions();
     }
 
+    @wire(getAllocatedVolunteers, { eventId: '$recordId' })
+    wiredAllocatedVolunteers(result) {
+        this.wiredAllocatedVolunteersResult = result;
+        const { data, error } = result;
+
+        if (data) {
+            this.allocatedVolunteers = data.map(item => ({
+                ...item,
+                totalCount: item.classCount + item.branchCount + item.collageCount
+            }));
+        } else if (error) {
+            console.error('Error loading volunteers:', error);
+            this.allocatedVolunteers = [];
+        }
+    }
+
     checkInitialPermissions() {
         checkPermissions(
         ).then(response => {
@@ -69,9 +89,8 @@ export default class VolunteerAllocator extends LightningElement {
                 }
             }
             this.initialAccessMessage = deniedMessages.join(' & ');
-            if (!this.initialAccessMessage) {
-                this.loadAllocatedVolunteers();
-            }
+            refreshApex(this.wiredAllocatedVolunteersResult);
+
         })
         .catch(error => {
             console.error('error :' + error);
@@ -101,10 +120,9 @@ export default class VolunteerAllocator extends LightningElement {
             eventIds: [this.recordId]
         }).then(response => {
             const resp = response[0];
-            console.log('hello from resp :', resp);
             this.statusMessage = resp.statusMessage;
             if (resp.isSuccess && resp.allocatedVolunteers) {
-                this.loadAllocatedVolunteers(); //will populate after remaining volunteer assigned.
+                refreshApex(this.wiredAllocatedVolunteersResult);
                 this.showToast('Successful Allocation', this.statusMessage, 'success');
             } else {
                 this.showToast('Failed Allocation', this.statusMessage, 'error');
@@ -129,20 +147,6 @@ export default class VolunteerAllocator extends LightningElement {
                 this.allocatedVolunteers = updatedList;
             }
         })
-    }
-
-    loadAllocatedVolunteers() {
-        getAllocatedVolunteers({
-            eventId: this.recordId
-        }).then(response => {
-            this.allocatedVolunteers = response.map(item => ({
-                ...item,
-                totalCount: item.classCount + item.branchCount + item.collageCount
-            }));
-        }).catch(error => {
-            console.error('Error loading volunteers:', error);
-            this.allocatedVolunteers = [];
-        });
     }
 
     showToast(title, message, variant) {

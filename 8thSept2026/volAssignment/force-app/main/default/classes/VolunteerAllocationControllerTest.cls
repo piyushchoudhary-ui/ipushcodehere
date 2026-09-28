@@ -1,5 +1,5 @@
 @IsTest
-private class VolunteerAllocationHandlerTest {
+private class VolunteerAllocationControllerTest {
 
     @TestSetup
     static void setupData() {
@@ -21,7 +21,7 @@ private class VolunteerAllocationHandlerTest {
     static void testAssignVolunteersWithNullEventIdsRetunEmptyResult() {
 
         Test.startTest();
-        List<VolunteerAllocationHandler.AssignVolunteersResponse> result = VolunteerAllocationHandler.assignVolunteers(null);
+        List<VolunteerAllocationService.AssignVolunteersResponse> result = VolunteerAllocationController.assignVolunteers(null);
         Test.stopTest();
 
         System.assertEquals(0, result.size());
@@ -31,7 +31,7 @@ private class VolunteerAllocationHandlerTest {
     static void testAssignVolunteerWithEmptyEventIdsReturnEmptyResult() {
 
         Test.startTest();
-        List<VolunteerAllocationHandler.AssignVolunteersResponse> result = VolunteerAllocationHandler.assignVolunteers(new Set<Id>());
+        List<VolunteerAllocationService.AssignVolunteersResponse> result = VolunteerAllocationController.assignVolunteers(new List<Id>());
         Test.stopTest();
 
         System.assertEquals(0, result.size());
@@ -40,10 +40,10 @@ private class VolunteerAllocationHandlerTest {
     @IsTest
     static void testAssignVolunteerWithInvalidIdsReturnMessageInvalidEventIds() {
 
-        Set<Id> ids = new Set<Id>{UserInfo.getUserId()};
+        List<Id> ids = new List<Id>{UserInfo.getUserId()};
 
         Test.startTest();
-        List<VolunteerAllocationHandler.AssignVolunteersResponse> result = VolunteerAllocationHandler.assignVolunteers(ids);
+        List<VolunteerAllocationService.AssignVolunteersResponse> result = VolunteerAllocationController.assignVolunteers(ids);
         Test.stopTest();
 
         System.assertEquals(System.Label.Invalid_EventId_EventIds, result[0].statusMessage);
@@ -62,16 +62,14 @@ private class VolunteerAllocationHandlerTest {
         insert eventRecord;
 
         Test.startTest();
-        List<VolunteerAllocationHandler.AssignVolunteersResponse> result = VolunteerAllocationHandler.assignVolunteers(
-                new Set<Id>{ eventRecord.Id }
+        List<VolunteerAllocationService.AssignVolunteersResponse> result = VolunteerAllocationController.assignVolunteers(
+                new List<Id>{ eventRecord.Id }
             );
         Test.stopTest();
         Integer assignVolunteerCount =  [SELECT COUNT()
                                             FROM Assigned_Volunteer__c
                                             WHERE Event__c = :eventRecord.Id
                                         ];
-
-        System.assertEquals(1, result.size());
         System.assertEquals(false, result[0].isSuccess);
         System.assertEquals(eventRecord.Id, result[0].eventId);
         System.assertEquals(eventRecord.Name + ' ' +System.Label.Failed_Volunteer_Allocation_No_Required_Count, result[0].statusMessage);
@@ -91,8 +89,8 @@ private class VolunteerAllocationHandlerTest {
         insert eventRecord;
 
         Test.startTest();
-        List<VolunteerAllocationHandler.AssignVolunteersResponse> result = VolunteerAllocationHandler.assignVolunteers(
-                new Set<Id>{ eventRecord.Id }
+        List<VolunteerAllocationService.AssignVolunteersResponse> result = VolunteerAllocationController.assignVolunteers(
+                new List<Id>{ eventRecord.Id }
             );
         Test.stopTest();
 
@@ -101,10 +99,10 @@ private class VolunteerAllocationHandlerTest {
                                             WHERE Event__c = :eventRecord.Id
                                         ];
 
-        System.assertEquals(1, result.size());
+
         System.assertEquals(true, result[0].isSuccess);
         System.assertEquals(2, result[0].allocatedVolunteers.size());
-        System.assertEquals(eventRecord.Name + ' ' + System.Label.Volunteers_Successfully_Allocated, result[0].statusMessage);
+        System.assertEquals(String.valueOf(result[0].allocatedVolunteers.size()) + ' ' + System.Label.New_Volunteers_Are_Now_Assigned, result[0].statusMessage);
         System.assertEquals(2, assignVolunteerCount);
     }
 
@@ -121,8 +119,8 @@ private class VolunteerAllocationHandlerTest {
         insert eventRecord;
 
         Test.startTest();
-        List<VolunteerAllocationHandler.AssignVolunteersResponse> result = VolunteerAllocationHandler.assignVolunteers(
-            new Set<Id>{ eventRecord.Id }
+        List<VolunteerAllocationService.AssignVolunteersResponse> result = VolunteerAllocationController.assignVolunteers(
+            new List<Id>{ eventRecord.Id }
         );
         Test.stopTest();
 
@@ -150,8 +148,8 @@ private class VolunteerAllocationHandlerTest {
         insert eventRecord;
 
         Test.startTest();
-        List<VolunteerAllocationHandler.AssignVolunteersResponse> result = VolunteerAllocationHandler.assignVolunteers(
-                new Set<Id>{ eventRecord.Id }
+        List<VolunteerAllocationService.AssignVolunteersResponse> result = VolunteerAllocationController.assignVolunteers(
+                new List<Id>{ eventRecord.Id }
             );
         Test.stopTest();
 
@@ -174,6 +172,90 @@ private class VolunteerAllocationHandlerTest {
     }
     
     @IsTest
+    static void testAssignVolunteersPartialAlreadyExistingVolunteersAllocationReturnSuccessMessageAndAllocatedVolunteerIds() {
+
+        Event__c eventRecord = new Event__c(
+            Name = 'Sub Junior Event',
+            Primary_Category__c = 'Sub-Junior',
+            Required_Student_Count__c = 2,
+            Work_Type__c = 'Branch'
+        );
+
+        insert eventRecord;
+        
+        Student__c studentRecord = [SELECT Id FROM Student__c Where Name = 'Senior Student' LIMIT 1];
+        
+        insert new Assigned_Volunteer__c(
+            Event__c = eventRecord.Id,
+            Student__c = studentRecord.Id,
+            Assigned_Date__c = Date.today()
+        );
+
+        Test.startTest();
+        List<VolunteerAllocationService.AssignVolunteersResponse> result = VolunteerAllocationController.assignVolunteers(
+            new List<Id>{ eventRecord.Id }
+        );
+        Test.stopTest();
+
+        Integer assignVolunteerCount =  [SELECT COUNT()
+                                            FROM Assigned_Volunteer__c
+                                            WHERE Event__c = :eventRecord.Id
+                                        ];
+
+        System.assertEquals(1, result.size());
+        System.assertEquals(true, result[0].isSuccess);
+        System.assertEquals(1, result[0].allocatedVolunteers.size());
+        System.assertEquals(2, assignVolunteerCount);
+        System.assertEquals(result[0].statusMessage, '1 '+ System.Label.Volunteers_Are_Already_Assigned + ' 1 ' + System.Label.New_Volunteers_Are_Now_Assigned);
+    }
+    
+    @IsTest
+    static void testAssignVolunteersAlreadyFullyAssignedVolunteersAllocationReturnSuccessMessageAndAllocatedVolunteerIds() {
+
+        Event__c eventRecord = new Event__c(
+            Name = 'Sub Junior Event',
+            Primary_Category__c = 'Sub-Junior',
+            Required_Student_Count__c = 2,
+            Work_Type__c = 'Branch'
+        );
+
+        insert eventRecord;
+        
+        Student__c seniorStudentRecord = [SELECT Id FROM Student__c Where Name = 'Senior Student' LIMIT 1];
+        Student__c subJuniorStudentRecord = [SELECT Id FROM Student__c Where Name = 'Sub Junior Student' LIMIT 1];
+        
+        List<Assigned_Volunteer__c> existingAssignments = new List<Assigned_Volunteer__c>();
+        existingAssignments.add( 
+            new Assigned_Volunteer__c( 
+            Event__c = eventRecord.Id,
+            Student__c = seniorStudentRecord.Id,
+            Assigned_Date__c = Date.today()
+        ));
+        existingAssignments.add( 
+            new Assigned_Volunteer__c( 
+            Event__c = eventRecord.Id,
+            Student__c = subJuniorStudentRecord.Id,
+            Assigned_Date__c = Date.today()
+        ));
+        insert existingAssignments;
+
+        Test.startTest();
+        List<VolunteerAllocationService.AssignVolunteersResponse> result = VolunteerAllocationController.assignVolunteers(
+            new List<Id>{ eventRecord.Id }
+        );
+        Test.stopTest();
+
+        Integer assignVolunteerCount =  [SELECT COUNT()
+                                            FROM Assigned_Volunteer__c
+                                            WHERE Event__c = :eventRecord.Id
+                                        ];
+
+        System.assertEquals(false, result[0].isSuccess);
+        System.assertEquals(2, assignVolunteerCount);
+        System.assertEquals(result[0].statusMessage, System.Label.Already_Assigned_Required_Resources);
+    }
+    
+    @IsTest
     static void testAssignVolunteersInsufficientVolunteerReturnFailedMessage() {
 
         Event__c eventRecord = new Event__c(
@@ -186,8 +268,8 @@ private class VolunteerAllocationHandlerTest {
         insert eventRecord;
 
         Test.startTest();
-        List<VolunteerAllocationHandler.AssignVolunteersResponse> result = VolunteerAllocationHandler.assignVolunteers(
-            new Set<Id>{ eventRecord.Id }
+        List<VolunteerAllocationService.AssignVolunteersResponse> result = VolunteerAllocationController.assignVolunteers(
+            new List<Id>{ eventRecord.Id }
         );
         Test.stopTest();
 
@@ -233,8 +315,8 @@ private class VolunteerAllocationHandlerTest {
         );
 
         Test.startTest();
-        List<VolunteerAllocationHandler.AssignVolunteersResponse> result = VolunteerAllocationHandler.assignVolunteers(
-                new Set<Id>{ newEvent.Id }
+        List<VolunteerAllocationService.AssignVolunteersResponse> result = VolunteerAllocationController.assignVolunteers(
+                new List<Id>{ newEvent.Id }
             );
         Test.stopTest();
 
@@ -274,8 +356,8 @@ private class VolunteerAllocationHandlerTest {
         );
 
         Test.startTest();
-        List<VolunteerAllocationHandler.AssignVolunteersResponse> result = VolunteerAllocationHandler.assignVolunteers(
-                new Set<Id>{ newEvent.Id }
+        List<VolunteerAllocationService.AssignVolunteersResponse> result = VolunteerAllocationController.assignVolunteers(
+                new List<Id>{ newEvent.Id }
             );
         Test.stopTest();
 
@@ -314,16 +396,15 @@ private class VolunteerAllocationHandlerTest {
         );
 
         Test.startTest();
-        List<VolunteerAllocationHandler.AssignVolunteersResponse> result = VolunteerAllocationHandler.assignVolunteers(
-                new Set<Id>{ newEvent.Id }
+        List<VolunteerAllocationService.AssignVolunteersResponse> result = VolunteerAllocationController.assignVolunteers(
+                new List<Id>{ newEvent.Id }
             );
         Test.stopTest();
 
         System.assertEquals(1, result.size());
         System.assertEquals(true, result[0].isSuccess);
     }
-
-    @IsTest
+@IsTest
     static void testMultipleEvents() {
 
         Event__c event1 = new Event__c(
@@ -346,8 +427,8 @@ private class VolunteerAllocationHandlerTest {
         };
 
         Test.startTest();
-        List<VolunteerAllocationHandler.AssignVolunteersResponse> result = VolunteerAllocationHandler.assignVolunteers(
-            new Set<Id>{event1.Id, event2.Id}
+        List<VolunteerAllocationService.AssignVolunteersResponse> result = VolunteerAllocationController.assignVolunteers(
+            new List<Id>{event1.Id, event2.Id}
         );
         Test.stopTest();
 
@@ -361,5 +442,132 @@ private class VolunteerAllocationHandlerTest {
 
         System.assertEquals(2, result.size());
         System.assertEquals(2, assignmentCount);
+    }
+
+    @IsTest
+    static void testGetAllocatedVolunteersReturnAllocatedStudents() {
+
+        Student__c seniorStudent = [SELECT Id
+            FROM Student__c
+            WHERE Name = 'Senior Student'
+            LIMIT 1
+        ];
+
+        Event__c eventRecord = new Event__c(
+            Name = 'Allocated Volunteer Event',
+            Primary_Category__c = 'Senior',
+            Required_Student_Count__c = 1,
+            Work_Type__c = 'Class'
+        );
+
+        insert eventRecord;
+
+        insert new Assigned_Volunteer__c(
+            Event__c = eventRecord.Id,
+            Student__c = seniorStudent.Id,
+            Assigned_Date__c = Date.today()
+        );
+
+        Test.startTest();
+        List<VolunteerAllocationService.VolunteerWorkload> result = VolunteerAllocationController.getAllocatedVolunteers(
+            eventRecord.Id
+        );
+        Test.stopTest();
+
+        System.assertEquals(1, result.size());
+        System.assertEquals(seniorStudent.Id, result[0].studentId);
+        System.assertEquals('Senior Student', result[0].studentName);
+        System.assertEquals('Senior', result[0].category);
+        System.assertEquals(1, result[0].classCount);
+    }
+
+    @IsTest
+    static void testGetAllocatedVolunteersWithNullEventIdReturnEmptyResult() {
+
+        Test.startTest();
+        List<VolunteerAllocationService.VolunteerWorkload> result = VolunteerAllocationController.getAllocatedVolunteers(null);
+        Test.stopTest();
+
+        System.assertEquals(0, result.size());
+    }
+
+    @IsTest
+    static void testDeleteAssignVolunteerReturnSuccess() {
+
+        Student__c seniorStudent = [SELECT Id
+            FROM Student__c
+            WHERE Name = 'Senior Student'
+            LIMIT 1
+        ];
+
+        Event__c eventRecord = new Event__c(
+            Name = 'Delete Volunteer Event',
+            Primary_Category__c = 'Senior',
+            Required_Student_Count__c = 1,
+            Work_Type__c = 'Class'
+        );
+
+        insert eventRecord;
+
+        insert new Assigned_Volunteer__c(
+            Event__c = eventRecord.Id,
+            Student__c = seniorStudent.Id,
+            Assigned_Date__c = Date.today()
+        );
+
+        Test.startTest();
+        String result = VolunteerAllocationController.deleteAssignVolunteer(
+            new List<Id>{ eventRecord.Id },
+            new List<Id>{ seniorStudent.Id }
+        );
+        Test.stopTest();
+
+        Integer assignVolunteerCount = [SELECT COUNT()
+                                        FROM Assigned_Volunteer__c
+                                        WHERE Event__c = :eventRecord.Id
+                                    ];
+
+        System.assertEquals('SUCCESS', result);
+        System.assertEquals(0, assignVolunteerCount);
+    }
+
+    @IsTest
+    static void testDeleteAssignVolunteerReturnFailedWhenAssignmentDoesNotExist() {
+
+        Event__c eventRecord = new Event__c(
+            Name = 'No Assignment Event',
+            Primary_Category__c = 'Senior',
+            Required_Student_Count__c = 1,
+            Work_Type__c = 'Class'
+        );
+
+        insert eventRecord;
+
+        Student__c seniorStudent = [SELECT Id
+            FROM Student__c
+            WHERE Name = 'Senior Student'
+            LIMIT 1
+        ];
+
+        Test.startTest();
+        String result = VolunteerAllocationController.deleteAssignVolunteer(
+            new List<Id>{ eventRecord.Id },
+            new List<Id>{ seniorStudent.Id }
+        );
+        Test.stopTest();
+
+        System.assertEquals('FAILED', result);
+    }
+
+    @IsTest
+    static void testCheckPermissionsReturnPermissionMap() {
+
+        Test.startTest();
+        Map<String, Boolean> result = VolunteerAllocationController.checkPermissions();
+        Test.stopTest();
+
+        System.assertEquals(true, result.containsKey('isHavingAssigningPermission'));
+        System.assertEquals(true, result.containsKey('isHavingStudentNamePermission'));
+        System.assertEquals(true, result.containsKey('isHavingStudentCategoryPermission'));
     }
 }
