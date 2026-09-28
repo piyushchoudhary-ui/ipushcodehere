@@ -29,6 +29,7 @@ export default class VolunteerAllocator extends LightningElement {
     columns = columns;
     @api recordId;
     initialAccessMessage = null;
+    isLoading = true;
     isSuccess;
     permissionMessage = null;
     showModal = false;
@@ -72,13 +73,16 @@ export default class VolunteerAllocator extends LightningElement {
                 ...item,
                 totalCount: item.classCount + item.branchCount + item.collageCount
             }));
+            this.isLoading = false;
         } else if (error) {
             console.error('Error loading volunteers:', error);
             this.allocatedVolunteers = [];
+            this.isLoading = false;
         }
     }
 
     checkInitialPermissions() {
+        this.isLoading = true;
         checkPermissions(
         ).then(response => {
             let deniedMessages = [];
@@ -90,14 +94,17 @@ export default class VolunteerAllocator extends LightningElement {
             }
             this.initialAccessMessage = deniedMessages.join(' & ');
             refreshApex(this.wiredAllocatedVolunteersResult);
+            this.isLoading = false;
 
         })
         .catch(error => {
             console.error('error :' + error);
+            this.isLoading = false;
         });
     }
     
     handleAssignVolunteers() {
+        this.isLoading = true;
         checkPermissions(
         ).then(response => {
             let deniedMessages = [];
@@ -110,12 +117,15 @@ export default class VolunteerAllocator extends LightningElement {
             }
             this.permissionMessage = deniedMessages.join(" & ");
             this.showModal = true;
+            this.isLoading = false;
         }).catch(error => {
             console.error('error :' + error);
+            this.isLoading = false;
         })
     }
 
     handleAssign() {
+        this.isLoading = true;
         assignVolunteers({
             eventIds: [this.recordId]
         }).then(response => {
@@ -128,16 +138,19 @@ export default class VolunteerAllocator extends LightningElement {
                 this.showToast('Failed Allocation', this.statusMessage, 'error');
             }
             this.showModal = false;
+            this.isLoading = false;
         }).catch(error => {
             console.error('Error from Apex:', error);
             this.statusMessage = error?.body?.message || 'An unexpected error occurred.';
             this.showModal = false;
+            this.isLoading = false;
             this.showToast('Failed Allocation', this.statusMessage, 'error');
         });
     }
 
     deleteVolunteer(event) {
         const { studentId } = event.detail.row;
+        this.isLoading = true;
         deleteAssignVolunteer({
             eventIds: [this.recordId],
             studentIds: [studentId] 
@@ -146,6 +159,7 @@ export default class VolunteerAllocator extends LightningElement {
                 const updatedList = this.allocatedVolunteers.filter(item => item.studentId !== studentId);
                 this.allocatedVolunteers = updatedList;
             }
+            this.isLoading = false;
         })
     }
 
